@@ -1,4 +1,4 @@
-import os, subprocess, psutil, re, threading, socket, time, random, zipfile, json
+import os, subprocess, psutil, re, threading, socket, time, random, zipfile, json, sys
 from flask import Flask, jsonify, render_template_string, request, session, redirect, url_for
 from waitress import serve
 from werkzeug.utils import secure_filename
@@ -26,6 +26,41 @@ def get_user_folder():
     user_dir = os.path.join(UPLOAD_FOLDER, safe_email)
     os.makedirs(user_dir, exist_ok=True)
     return user_dir
+
+def auto_install_requirements(filepath):
+    """Automatically scans the Python script for imports and installs missing packages via pip."""
+    try:
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+        
+        # Find all import and from statements
+        import_patterns = re.findall(r'^\s*(?:import\s+([a-zA-Z0-9_]+)|from\s+([a-zA-Z0-9_]+)\s+import)', content, re.MULTILINE)
+        
+        # Python standard library modules to skip
+        stdlib_modules = {
+            'os', 'sys', 'json', 'time', 'math', 'random', 're', 'subprocess', 
+            'platform', 'datetime', 'sqlite3', 'asyncio', 'threading', 'collections', 
+            'logging', 'shutil', 'socket', 'http', 'urllib', 'email', 'io', 'hashlib', 
+            'base64', 'queue', 'typing', 'string', 'signal'
+        }
+        
+        modules_to_install = set()
+        for match in import_patterns:
+            mod = match[0] or match[1]
+            if mod and mod not in stdlib_modules:
+                modules_to_install.add(mod)
+                
+        for mod in modules_to_install:
+            try:
+                __import__(mod)
+            except ImportError:
+                print(f"📦 Auto-installing missing module: {mod}")
+                try:
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", mod])
+                except Exception as err:
+                    print(f"Failed to install {mod}: {err}")
+    except Exception as e:
+        print(f"Error parsing imports: {e}")
 
 def cpu_tracker_loop():
     global current_cpu
@@ -697,7 +732,7 @@ AUTO_PILOT_HTML = """
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('license_key', KEY);
-            showToast('UPLOADING & DEPLOYING...');
+            showToast('UPLOADING & DEPENDENCY CHECK...');
             try {
                 const res = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await res.json();
@@ -932,25 +967,9 @@ def upload_file():
         filepath = os.path.join(user_dir, filename)
         file.save(filepath)
         
-        # Automatically check and install missing packages found inside the uploaded bot script
+        # Trigger automatic dependency installation for Python scripts
         if filename.endswith('.py'):
-            try:
-                with open(filepath, "r", encoding="utf-8") as bf:
-                    code_content = bf.read()
-                    for line in code_content.splitlines():
-                        stripped = line.strip()
-                        if stripped.startswith("import ") or stripped.startswith("from "):
-                            parts = stripped.replace(",", " ").split()
-                            if len(parts) > 1:
-                                mod = parts[1].split(".")[0]
-                                if mod not in ["os", "sys", "json", "time", "math", "random", "re", "subprocess", "platform", "datetime", "sqlite3", "asyncio", "threading", "collections", "logging"]:
-                                    try:
-                                        __import__(mod)
-                                    except ImportError:
-                                        print(f"📦 Auto-installing missing dependency: {mod}")
-                                        subprocess.check_call([sys.executable, "-m", "pip", "install", mod])
-            except Exception as ex:
-                print(f"⚠️ Could not parse file imports: {ex}")
+            auto_install_requirements(filepath)
         
         if filename.endswith('.zip'):
             extract_path = os.path.join(user_dir, filename.replace('.zip', ''))
@@ -960,7 +979,7 @@ def upload_file():
             os.remove(filepath)
             return jsonify({'message': f'Extracted Zip archive: {filename}', 'filename': filename})
         
-        return jsonify({'message': f'Uploaded & Dependencies Checked: {filename}!', 'filename': filename})
+        return jsonify({'message': f'Uploaded & Auto-Installed Dependencies: {filename}!', 'filename': filename})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -992,7 +1011,12 @@ def save_code(filename):
         code = data.get('code', '')
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(code)
-        return jsonify({'message': f'Updated {filename}!'})
+        
+        # Re-check and install dependencies if code is edited and saved
+        if filename.endswith('.py'):
+            auto_install_requirements(filepath)
+            
+        return jsonify({'message': f'Updated and checked dependencies for {filename}!'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1032,6 +1056,10 @@ def start_bot(filename):
     filepath = os.path.join(user_dir, filename)
     log_path = filepath + '.log'
     proc_key = f"{session.get('user')}:{filename}"
+    
+    # Ensure dependencies are checked right before starting as well
+    if filename.endswith('.py'):
+        auto_install_requirements(filepath)
     
     cmd = ['python3', '-u', filepath]
     if filename.endswith('.js'):
@@ -1074,7 +1102,7 @@ def delete_bot(filename):
     if proc_key in active_processes:
         try:
             pid = active_processes[proc_key].get('pid')
-            if pid and psutil.pid_exists(pid): psutil.Process(proc_key).terminate()
+            if pid and psutil.pid_exists(pid): psutil.Process(pid).terminate()
         except:
             pass
         active_processes.pop(proc_key, None)
@@ -1121,7 +1149,7 @@ def get_local_ip():
 if __name__ == '__main__':
     local_ip = get_local_ip()
     print("\n" + "="*40)
-    print("🚀 NEXUS-X v6 CLOUD IDE STARTED SUCCESSFULLY WITH AUTO-PIP!")
+    print("🚀 NEXUS-X v6 CLOUD IDE STARTED WITH AUTO-PIP DEPENDENCY INSTALLER!")
     print(f"👉 Local URL: http://127.0.0.1:5000")
     print(f"👉 Network IP: http://{local_ip}:5000")
     print("="*40 + "\n")
