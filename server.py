@@ -37,16 +37,14 @@ active_processes = {}
 desired_states = {}
 current_cpu = 5.2
 
-# Universal Auto-Installer: Reads ANY python script and installs required packages dynamically
 def universal_auto_install(script_path):
     try:
         with open(script_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
         
-        # Regex to find all imported modules (supports 'import x', 'import x.y', 'from x import y')
-        imports = re.findall(r'^(?:import|from)\s+([a-zA-Z0-9_]+)', content, multiprocessing_filter := re.MULTILINE)
+        # Clean regex to find all imported packages
+        imports = re.findall(r'^(?:import|from)\s+([a-zA-Z0-9_]+)', content, re.MULTILINE)
         
-        # Common standard library modules to ignore during pip install
         stdlib_modules = {
             'os', 'sys', 'time', 'datetime', 'json', 'math', 'random', 're', 'socket', 
             'subprocess', 'threading', 'pathlib', 'logging', 'collections', 'itertools', 
@@ -56,7 +54,6 @@ def universal_auto_install(script_path):
         packages_to_install = set()
         for imp in imports:
             if imp not in stdlib_modules and len(imp) > 1:
-                # Map specific package names if they differ from import names
                 pkg_name = imp
                 if imp == 'telegram':
                     pkg_name = 'python-telegram-bot'
@@ -73,7 +70,6 @@ def universal_auto_install(script_path):
                 
                 packages_to_install.add(pkg_name)
         
-        # Extra safeguards for popular Telegram libraries
         if 'pyrogram' in content.lower():
             packages_to_install.add('tgcrypto')
             packages_to_install.add('pydantic')
@@ -874,7 +870,6 @@ def upload_file():
         file.save(filepath)
         
         if filename.endswith('.py'):
-            # Run universal auto installer in background thread to prevent 502 gateway timeout
             threading.Thread(target=universal_auto_install, args=(filepath,), daemon=True).start()
             
         return jsonify({'message': f'Uploaded & Auto-installing dependencies for {filename}!', 'filename': filename})
@@ -956,7 +951,6 @@ def start_bot(filename):
     log_path = filepath + '.log'
     proc_key = f"{session.get('user')}:{filename}"
     
-    # Kill existing process if running
     if proc_key in active_processes:
         try:
             pid = active_processes[proc_key].get('pid')
