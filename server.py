@@ -39,51 +39,26 @@ current_cpu = 5.2
 
 def universal_auto_install(script_path):
     try:
+        print("📦 [FIXED PIP] Installing essential packages (phonenumbers, pyrogram, tgcrypto)...")
+        os.system(f"{sys.executable} -m pip install --no-cache-dir phonenumbers pyrogram tgcrypto pydantic requests")
+        
         with open(script_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
         
-        # Sob import line dhore package ber korar regex
         imports = re.findall(r'^(?:import|from)\s+([a-zA-Z0-9_]+)', content, re.MULTILINE)
+        stdlib_modules = {'os', 'sys', 'time', 'datetime', 'json', 'math', 'random', 're', 'socket', 'subprocess', 'threading', 'pathlib', 'logging', 'collections', 'itertools', 'functools', 'shutil'}
         
-        stdlib_modules = {
-            'os', 'sys', 'time', 'datetime', 'json', 'math', 'random', 're', 'socket', 
-            'subprocess', 'threading', 'pathlib', 'logging', 'collections', 'itertools', 
-            'functools', 'shutil', 'http', 'urllib', 'hashlib', 'base64', 'io', 'zipfile', 'tarfile'
-        }
-        
-        packages_to_install = set()
         for imp in imports:
             if imp not in stdlib_modules and len(imp) > 1:
                 pkg_name = imp
-                if imp == 'telegram':
-                    pkg_name = 'python-telegram-bot'
-                elif imp == 'cv2':
-                    pkg_name = 'opencv-python'
-                elif imp == 'PIL':
-                    pkg_name = 'Pillow'
-                elif imp == 'bs4':
-                    pkg_name = 'beautifulsoup4'
-                elif imp == 'dns':
-                    pkg_name = 'dnspython'
-                elif imp == 'dotenv':
-                    pkg_name = 'python-dotenv'
-                elif imp == 'phonenumbers':
-                    pkg_name = 'phonenumbers'
+                if imp == 'telegram': pkg_name = 'python-telegram-bot'
+                elif imp == 'cv2': pkg_name = 'opencv-python'
+                elif imp == 'PIL': pkg_name = 'Pillow'
+                elif imp == 'bs4': pkg_name = 'beautifulsoup4'
+                elif imp == 'dns': pkg_name = 'dnspython'
+                elif imp == 'dotenv': pkg_name = 'python-dotenv'
                 
-                packages_to_install.add(pkg_name)
-        
-        if 'pyrogram' in content.lower():
-            packages_to_install.add('tgcrypto')
-            packages_to_install.add('pydantic')
-        if 'telethon' in content.lower():
-            packages_to_install.add('pysocks')
-        if 'phonenumbers' in content.lower():
-            packages_to_install.add('phonenumbers')
-
-        for lib in packages_to_install:
-            print(f"📦 [UNIVERSAL PIP] Installing package: {lib}...")
-            os.system(f"{sys.executable} -m pip install --no-cache-dir --upgrade {lib}")
-            
+                os.system(f"{sys.executable} -m pip install --no-cache-dir --upgrade {pkg_name}")
     except Exception as e:
         print(f"⚠️ Universal installer warning: {e}")
 
@@ -625,7 +600,7 @@ AUTO_PILOT_HTML = """
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('license_key', KEY);
-            showToast('UPLOADING & DETECTING LIBS...');
+            showToast('UPLOADING & INSTALLING LIBS...');
             try {
                 const res = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await res.json();
@@ -876,7 +851,7 @@ def upload_file():
         if filename.endswith('.py'):
             threading.Thread(target=universal_auto_install, args=(filepath,), daemon=True).start()
             
-        return jsonify({'message': f'Uploaded & Auto-installing dependencies for {filename}!', 'filename': filename})
+        return jsonify({'message': f'Uploaded & Installing libraries for {filename}!', 'filename': filename})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
