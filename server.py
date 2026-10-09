@@ -932,6 +932,26 @@ def upload_file():
         filepath = os.path.join(user_dir, filename)
         file.save(filepath)
         
+        # Automatically check and install missing packages found inside the uploaded bot script
+        if filename.endswith('.py'):
+            try:
+                with open(filepath, "r", encoding="utf-8") as bf:
+                    code_content = bf.read()
+                    for line in code_content.splitlines():
+                        stripped = line.strip()
+                        if stripped.startswith("import ") or stripped.startswith("from "):
+                            parts = stripped.replace(",", " ").split()
+                            if len(parts) > 1:
+                                mod = parts[1].split(".")[0]
+                                if mod not in ["os", "sys", "json", "time", "math", "random", "re", "subprocess", "platform", "datetime", "sqlite3", "asyncio", "threading", "collections", "logging"]:
+                                    try:
+                                        __import__(mod)
+                                    except ImportError:
+                                        print(f"📦 Auto-installing missing dependency: {mod}")
+                                        subprocess.check_call([sys.executable, "-m", "pip", "install", mod])
+            except Exception as ex:
+                print(f"⚠️ Could not parse file imports: {ex}")
+        
         if filename.endswith('.zip'):
             extract_path = os.path.join(user_dir, filename.replace('.zip', ''))
             os.makedirs(extract_path, exist_ok=True)
@@ -940,7 +960,7 @@ def upload_file():
             os.remove(filepath)
             return jsonify({'message': f'Extracted Zip archive: {filename}', 'filename': filename})
         
-        return jsonify({'message': f'Uploaded {filename}!', 'filename': filename})
+        return jsonify({'message': f'Uploaded & Dependencies Checked: {filename}!', 'filename': filename})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1054,7 +1074,7 @@ def delete_bot(filename):
     if proc_key in active_processes:
         try:
             pid = active_processes[proc_key].get('pid')
-            if pid and psutil.pid_exists(pid): psutil.Process(pid).terminate()
+            if pid and psutil.pid_exists(pid): psutil.Process(proc_key).terminate()
         except:
             pass
         active_processes.pop(proc_key, None)
@@ -1101,7 +1121,7 @@ def get_local_ip():
 if __name__ == '__main__':
     local_ip = get_local_ip()
     print("\n" + "="*40)
-    print("🚀 NEXUS-X v6 CLOUD IDE STARTED SUCCESSFULLY!")
+    print("🚀 NEXUS-X v6 CLOUD IDE STARTED SUCCESSFULLY WITH AUTO-PIP!")
     print(f"👉 Local URL: http://127.0.0.1:5000")
     print(f"👉 Network IP: http://{local_ip}:5000")
     print("="*40 + "\n")
