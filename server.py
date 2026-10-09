@@ -1,7 +1,6 @@
 import os
 import sys
 
-# Dynamic Port setup for Render and Local/Termux
 PORT = int(os.environ.get("PORT", 5050))
 
 try:
@@ -38,29 +37,8 @@ desired_states = {}
 current_cpu = 5.2
 
 def universal_auto_install(script_path):
-    try:
-        print("📦 [FIXED PIP] Installing essential packages (phonenumbers, pyrogram, tgcrypto)...")
-        os.system(f"{sys.executable} -m pip install --no-cache-dir phonenumbers pyrogram tgcrypto pydantic requests")
-        
-        with open(script_path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-        
-        imports = re.findall(r'^(?:import|from)\s+([a-zA-Z0-9_]+)', content, re.MULTILINE)
-        stdlib_modules = {'os', 'sys', 'time', 'datetime', 'json', 'math', 'random', 're', 'socket', 'subprocess', 'threading', 'pathlib', 'logging', 'collections', 'itertools', 'functools', 'shutil'}
-        
-        for imp in imports:
-            if imp not in stdlib_modules and len(imp) > 1:
-                pkg_name = imp
-                if imp == 'telegram': pkg_name = 'python-telegram-bot'
-                elif imp == 'cv2': pkg_name = 'opencv-python'
-                elif imp == 'PIL': pkg_name = 'Pillow'
-                elif imp == 'bs4': pkg_name = 'beautifulsoup4'
-                elif imp == 'dns': pkg_name = 'dnspython'
-                elif imp == 'dotenv': pkg_name = 'python-dotenv'
-                
-                os.system(f"{sys.executable} -m pip install --no-cache-dir --upgrade {pkg_name}")
-    except Exception as e:
-        print(f"⚠️ Universal installer warning: {e}")
+    # Requirements.txt handle korbe, tai ekhane extra pip lagbe na
+    pass
 
 def get_user_folder():
     if 'user' not in session:
@@ -80,7 +58,6 @@ def cpu_tracker_loop():
                 continue
         except:
             pass
-        
         change = random.uniform(-0.5, 0.5)
         current_cpu = round(max(3.0, min(15.0, current_cpu + change)), 1)
         time.sleep(2)
@@ -105,298 +82,73 @@ AUTO_PILOT_HTML = """
             --text-muted: #8a99ad;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
-        body { 
-            background: var(--bg-deep); 
-            color: var(--text-main); 
-            font-family: 'Inter', sans-serif; 
-            padding: 16px; 
-            padding-bottom: 70px;
-            min-height: 100vh;
-        }
-        
+        body { background: var(--bg-deep); color: var(--text-main); font-family: 'Inter', sans-serif; padding: 16px; padding-bottom: 70px; min-height: 100vh; }
         .container { width: 100%; max-width: 480px; margin: 0 auto; }
-        
-        .ring-header { 
-            background: linear-gradient(135deg, #0e1938, #070d21);
-            padding: 16px; 
-            border-radius: 14px;
-            border: 1px solid rgba(0, 243, 255, 0.25);
-            margin-bottom: 16px; 
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .ring-avatar {
-            width: 50px;
-            height: 50px;
-            background: rgba(0, 243, 255, 0.1);
-            border: 1px solid rgba(0, 243, 255, 0.4);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            animation: spinRing 6s linear infinite;
-        }
-
-        @keyframes spinRing {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
+        .ring-header { background: linear-gradient(135deg, #0e1938, #070d21); padding: 16px; border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.25); margin-bottom: 16px; display: flex; align-items: center; gap: 16px; }
+        .ring-avatar { width: 50px; height: 50px; background: rgba(0, 243, 255, 0.1); border: 1px solid rgba(0, 243, 255, 0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; animation: spinRing 6s linear infinite; }
+        @keyframes spinRing { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .ring-info h2 { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900; color: var(--neon-cyan); }
         .ring-info p { font-size: 8px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
-        
-        .status-badge-wrapper {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(0, 243, 255, 0.08);
-            padding: 5px 10px;
-            border-radius: 20px;
-            border: 1px solid rgba(0, 243, 255, 0.3);
-        }
-        .online-dot {
-            width: 6px;
-            height: 6px;
-            background-color: var(--neon-cyan);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--neon-cyan);
-        }
+        .status-badge-wrapper { margin-left: auto; display: flex; align-items: center; gap: 6px; background: rgba(0, 243, 255, 0.08); padding: 5px 10px; border-radius: 20px; border: 1px solid rgba(0, 243, 255, 0.3); }
+        .online-dot { width: 6px; height: 6px; background-color: var(--neon-cyan); border-radius: 50%; box-shadow: 0 0 8px var(--neon-cyan); }
         .badge { font-size: 8px; color: var(--neon-cyan); font-weight: 700; font-family: 'Orbitron', sans-serif; }
-
         .auth-wrapper { display: flex; align-items: center; justify-content: center; min-height: 85vh; }
-        .auth-box {
-            background: rgba(11, 19, 41, 0.95);
-            padding: 30px 20px;
-            border-radius: 20px;
-            border: 1px solid rgba(0, 243, 255, 0.4);
-            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
-            text-align: center;
-            width: 100%;
-        }
+        .auth-box { background: rgba(11, 19, 41, 0.95); padding: 30px 20px; border-radius: 20px; border: 1px solid rgba(0, 243, 255, 0.4); box-shadow: 0 0 30px rgba(0, 243, 255, 0.2); text-align: center; width: 100%; }
         .auth-box h2 { font-family: 'Orbitron'; font-size: 18px; color: var(--neon-cyan); margin-bottom: 20px; }
-        
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn {
-            flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
-            color: var(--text-muted); padding: 12px; font-size: 11px; font-family: 'Orbitron';
-            font-weight: 700; border-radius: 10px; cursor: pointer; text-align: center;
-        }
+        .tab-btn { flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 12px; font-size: 11px; font-family: 'Orbitron'; font-weight: 700; border-radius: 10px; cursor: pointer; text-align: center; }
         .tab-btn.active { background: rgba(0, 243, 255, 0.15); color: var(--neon-cyan); border-color: rgba(0, 243, 255, 0.5); }
-
-        .input-field {
-            width: 100%;
-            background: #040814;
-            border: 1px solid rgba(0, 243, 255, 0.3);
-            padding: 14px 16px;
-            border-radius: 10px;
-            color: #fff;
-            font-family: 'JetBrains Mono';
-            font-size: 13px;
-            margin-bottom: 15px;
-            outline: none;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        .stat-box {
-            background: rgba(11, 19, 41, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            padding: 10px 14px;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-        }
+        .input-field { width: 100%; background: #040814; border: 1px solid rgba(0, 243, 255, 0.3); padding: 14px 16px; border-radius: 10px; color: #fff; font-family: 'JetBrains Mono'; font-size: 13px; margin-bottom: 15px; outline: none; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+        .stat-box { background: rgba(11, 19, 41, 0.7); border: 1px solid rgba(255, 255, 255, 0.06); padding: 10px 14px; border-radius: 10px; display: flex; flex-direction: column; }
         .stat-label { font-size: 8px; font-family: 'Orbitron', sans-serif; color: var(--text-muted); }
         .stat-val { font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #fff; margin-top: 2px; }
-
-        .resource-card {
-            background: rgba(11, 19, 41, 0.85);
-            border: 1px solid rgba(0, 243, 255, 0.2);
-            padding: 14px;
-            border-radius: 14px;
-            margin-bottom: 16px;
-        }
-        .resource-title {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-        }
+        .resource-card { background: rgba(11, 19, 41, 0.85); border: 1px solid rgba(0, 243, 255, 0.2); padding: 14px; border-radius: 14px; margin-bottom: 16px; }
+        .resource-title { font-family: 'Orbitron', sans-serif; font-size: 9px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; }
         .res-item { margin-bottom: 8px; }
-        .res-item:last-child { margin-bottom: 0; }
-        .res-info {
-            display: flex;
-            justify-content: space-between;
-            font-size: 10px;
-            font-family: 'JetBrains Mono', monospace;
-            margin-bottom: 3px;
-            color: #fff;
-        }
-        .res-bar-bg {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 3px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .res-bar-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
-            border-radius: 3px;
-            transition: width 0.4s ease;
-        }
-
-        .card { 
-            background: var(--card-bg); 
-            padding: 16px; 
-            margin-bottom: 16px; 
-            border-radius: 14px; 
-            border: 1px solid rgba(0, 243, 255, 0.15);
-        }
-
-        .card-title { 
-            font-family: 'Orbitron', sans-serif;
-            font-size: 10px; font-weight: 700; margin-bottom: 12px; 
-            color: var(--text-muted); text-transform: uppercase; 
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        
-        .file-upload-wrapper {
-            background: #040814;
-            border: 2px dashed rgba(0, 243, 255, 0.3);
-            padding: 16px;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 12px;
-        }
-        
+        .res-info { display: flex; justify-content: space-between; font-size: 10px; font-family: 'JetBrains Mono', monospace; margin-bottom: 3px; color: #fff; }
+        .res-bar-bg { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.05); border-radius: 3px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.08); }
+        .res-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 3px; transition: width 0.4s ease; }
+        .card { background: var(--card-bg); padding: 16px; margin-bottom: 16px; border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.15); }
+        .card-title { font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+        .file-upload-wrapper { background: #040814; border: 2px dashed rgba(0, 243, 255, 0.3); padding: 16px; border-radius: 10px; text-align: center; margin-bottom: 12px; }
         input[type="file"] { color: var(--text-muted); font-size: 11px; width: 100%; cursor: pointer; }
-        input[type="file"]::file-selector-button {
-            background: rgba(0, 243, 255, 0.12);
-            color: var(--neon-cyan);
-            border: 1px solid rgba(0, 243, 255, 0.4);
-            padding: 8px 14px;
-            border-radius: 6px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 9px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-        
-        .btn { 
-            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
-            color: #050814; border: none; padding: 14px; width: 100%; 
-            font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; 
-            border-radius: 10px; cursor: pointer; letter-spacing: 1px;
-            position: relative; overflow: hidden; transition: all 0.2s ease;
-        }
-        .btn:active { transform: scale(0.97); }
-
-        .refresh-btn { 
-            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); 
-            color: var(--text-muted); padding: 5px 12px; font-size: 9px; 
-            border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; 
-        }
-
-        .instance-item { 
-            background: #070e21; 
-            padding: 12px; margin-bottom: 10px; 
-            border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.06);
-        }
+        input[type="file"]::file-selector-button { background: rgba(0, 243, 255, 0.12); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); padding: 8px 14px; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-size: 9px; font-weight: 700; cursor: pointer; margin-right: 10px; }
+        .btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #050814; border: none; padding: 14px; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; border-radius: 10px; cursor: pointer; letter-spacing: 1px; }
+        .refresh-btn { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); color: var(--text-muted); padding: 5px 12px; font-size: 9px; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; }
+        .instance-item { background: #070e21; padding: 12px; margin-bottom: 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.06); }
         .instance-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 11px; font-weight: 600; color: #fff; font-family: 'JetBrains Mono', monospace; }
-        
-        .metrics-row {
-            display: flex; gap: 8px; margin-bottom: 10px;
-            font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-muted);
-        }
+        .metrics-row { display: flex; gap: 8px; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-muted); }
         .metric-badge { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; }
-
         .st-on { color: var(--neon-cyan); font-size: 9px; background: rgba(0, 243, 255, 0.12); padding: 3px 8px; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-weight: 700; border: 1px solid rgba(0, 243, 255, 0.35); }
         .st-off { color: #ff3366; font-size: 9px; background: rgba(255, 51, 102, 0.12); padding: 3px 8px; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-weight: 700; border: 1px solid rgba(255, 51, 102, 0.35); }
-        
         .actions { display: flex; gap: 6px; margin-bottom: 6px; }
         .act-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; }
         .b-start { background: rgba(0, 243, 255, 0.1); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.3); }
         .b-stop { background: rgba(255, 0, 85, 0.1); color: #ff0055; border: 1px solid rgba(255, 0, 85, 0.3); }
         .b-del { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-        
         .secondary-actions { display: flex; gap: 6px; }
         .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; }
         .b-edit { background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
         .b-log { background: rgba(176, 0, 255, 0.15); color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.35); }
-        
-        .terminal-box { 
-            background: #02050e; border: 1px solid rgba(0, 243, 255, 0.35); 
-            padding: 12px; height: 180px; overflow-y: auto; 
-            font-family: 'JetBrains Mono', monospace; font-size: 10px; 
-            color: var(--neon-cyan); white-space: pre-wrap; border-radius: 8px; margin-top: 8px; line-height: 1.4;
-        }
+        .terminal-box { background: #02050e; border: 1px solid rgba(0, 243, 255, 0.35); padding: 12px; height: 180px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--neon-cyan); white-space: pre-wrap; border-radius: 8px; margin-top: 8px; line-height: 1.4; }
         .term-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
         .term-actions { display: flex; gap: 4px; }
         .control-btn { background: rgba(255, 255, 255, 0.1); color: #ccc; border: 1px solid rgba(255, 255, 255, 0.2); padding: 3px 8px; font-size: 9px; border-radius: 6px; cursor: pointer; font-family: 'Orbitron'; }
         .close-term { background: rgba(255, 0, 85, 0.2); color: #ff0055; border: 1px solid rgba(255, 0, 85, 0.4); padding: 3px 8px; font-size: 9px; border-radius: 6px; cursor: pointer; font-family: 'Orbitron'; }
-
-        /* Bottom Navbar */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: rgba(11, 19, 41, 0.95);
-            border-top: 1px solid rgba(0, 243, 255, 0.25);
-            display: flex; justify-content: space-around; padding: 10px 0;
-            z-index: 99; backdrop-filter: blur(10px);
-        }
-        .nav-item {
-            background: none; border: none; color: var(--text-muted);
-            font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700;
-            cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
-        }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(11, 19, 41, 0.95); border-top: 1px solid rgba(0, 243, 255, 0.25); display: flex; justify-content: space-around; padding: 10px 0; z-index: 99; backdrop-filter: blur(10px); }
+        .nav-item { background: none; border: none; color: var(--text-muted); font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .nav-item.active { color: var(--neon-cyan); }
-
         .view-section { display: none; }
         .view-section.active { display: block; }
-
-        #editorModal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 8, 20, 0.9); z-index: 100;
-            padding: 16px; align-items: center; justify-content: center;
-        }
-        .editor-content {
-            background: var(--card-bg); width: 100%; max-width: 480px; height: 85vh;
-            border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.35);
-            display: flex; flex-direction: column; padding: 16px;
-        }
+        #editorModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 8, 20, 0.9); z-index: 100; padding: 16px; align-items: center; justify-content: center; }
+        .editor-content { background: var(--card-bg); width: 100%; max-width: 480px; height: 85vh; border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.35); display: flex; flex-direction: column; padding: 16px; }
         .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .editor-title { font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 700; color: #fff; }
-        .code-textarea {
-            flex: 1; background: #02050e; border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace; font-size: 11px;
-            padding: 12px; border-radius: 8px; resize: none; outline: none;
-        }
+        .code-textarea { flex: 1; background: #02050e; border: 1px solid rgba(255, 255, 255, 0.1); color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 12px; border-radius: 8px; resize: none; outline: none; }
         .editor-footer { display: flex; gap: 8px; margin-top: 10px; }
-
         .empty { color: var(--text-muted); font-size: 11px; text-align: center; padding: 20px; font-family: 'JetBrains Mono', monospace; }
-        
-        #toast { 
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-50px); 
-            background: #0e1938; color: var(--neon-cyan); padding: 10px 20px; 
-            font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; border-radius: 20px; 
-            border: 1px solid rgba(0, 243, 255, 0.4);
-            opacity: 0; transition: all 0.3s ease; z-index: 101; pointer-events: none;
-        }
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-50px); background: #0e1938; color: var(--neon-cyan); padding: 10px 20px; font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; border-radius: 20px; border: 1px solid rgba(0, 243, 255, 0.4); opacity: 0; transition: all 0.3s ease; z-index: 101; pointer-events: none; }
         #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     </style>
 </head>
@@ -447,7 +199,6 @@ AUTO_PILOT_HTML = """
             }
         </script>
         {% else %}
-        
         <div class="ring-header">
             <div class="ring-avatar">
                 <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -467,21 +218,12 @@ AUTO_PILOT_HTML = """
 
         <div id="homeView" class="view-section active">
             <div class="stats-grid">
-                <div class="stat-box">
-                    <span class="stat-label">ENGINE MODE</span>
-                    <span class="stat-val" style="color: var(--neon-cyan);">AUTO-PIP</span>
-                </div>
-                <div class="stat-box">
-                    <span class="stat-label">LATENCY</span>
-                    <span class="stat-val" style="color: var(--neon-purple);">4ms [OPTIMIZED]</span>
-                </div>
+                <div class="stat-box"><span class="stat-label">ENGINE MODE</span><span class="stat-val" style="color: var(--neon-cyan);">REQUIREMENTS.TXT</span></div>
+                <div class="stat-box"><span class="stat-label">LATENCY</span><span class="stat-val" style="color: var(--neon-purple);">4ms [STABLE]</span></div>
             </div>
 
             <div class="resource-card">
-                <div class="resource-title">
-                    <span>SYSTEM HARDWARE MONITOR</span>
-                    <span style="color: var(--neon-cyan);">LIVE</span>
-                </div>
+                <div class="resource-title"><span>SYSTEM HARDWARE MONITOR</span><span style="color: var(--neon-cyan);">LIVE</span></div>
                 <div class="res-item">
                     <div class="res-info"><span>CPU USAGE</span><span id="cpuText">0%</span></div>
                     <div class="res-bar-bg"><div id="cpuBar" class="res-bar-fill"></div></div>
@@ -498,17 +240,12 @@ AUTO_PILOT_HTML = """
             
             <div class="card">
                 <div class="card-title"><span>⚡ DEPLOY ENGINE CORE</span></div>
-                <div class="file-upload-wrapper">
-                    <input type="file" id="botFile" accept=".py">
-                </div>
-                <button class="btn" onclick="deployBot()">UPLOAD & UNIVERSAL AUTO-INSTALL</button>
+                <div class="file-upload-wrapper"><input type="file" id="botFile" accept=".py"></div>
+                <button class="btn" onclick="deployBot()">UPLOAD SCRIPT CORE</button>
             </div>
             
             <div class="card">
-                <div class="card-title">
-                    <span>📂 ACTIVE INSTANCES</span>
-                    <button class="refresh-btn" onclick="loadInstances()">REFRESH</button>
-                </div>
+                <div class="card-title"><span>📂 ACTIVE INSTANCES</span><button class="refresh-btn" onclick="loadInstances()">REFRESH</button></div>
                 <div id="instanceList" class="empty">Scanning storage core...</div>
             </div>
 
@@ -552,9 +289,7 @@ AUTO_PILOT_HTML = """
                 <button class="close-term" onclick="closeEditor()">CLOSE</button>
             </div>
             <textarea id="codeTextarea" class="code-textarea" spellcheck="false"></textarea>
-            <div class="editor-footer">
-                <button class="btn" style="padding: 10px;" onclick="saveCode()">💾 SAVE & APPLY CODE</button>
-            </div>
+            <div class="editor-footer"><button class="btn" style="padding: 10px;" onclick="saveCode()">💾 SAVE & APPLY CODE</button></div>
         </div>
     </div>
 
@@ -572,11 +307,8 @@ AUTO_PILOT_HTML = """
 
         function showToast(msg) {
             const t = document.getElementById('toast');
-            t.innerText = msg; 
-            t.classList.add('show');
-            setTimeout(() => {
-                t.classList.remove('show');
-            }, 2500);
+            t.innerText = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2500);
         }
 
         async function updateSystemStats() {
@@ -584,7 +316,6 @@ AUTO_PILOT_HTML = """
                 const res = await fetch(`/system_stats?key=${KEY}`);
                 const data = await res.json();
                 if(data.error) return;
-
                 document.getElementById('cpuText').innerText = data.cpu_percent + '%';
                 document.getElementById('cpuBar').style.width = data.cpu_percent + '%';
                 document.getElementById('ramText').innerText = `${data.ram_used} MB / ${data.ram_total} MB (${data.ram_percent}%)`;
@@ -600,7 +331,7 @@ AUTO_PILOT_HTML = """
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('license_key', KEY);
-            showToast('UPLOADING & INSTALLING LIBS...');
+            showToast('UPLOADING SCRIPT...');
             try {
                 const res = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await res.json();
@@ -630,11 +361,7 @@ AUTO_PILOT_HTML = """
                                     <span>⚡ ${b.name}</span>
                                     <span class="${online ? 'st-on' : 'st-off'}">${b.status}</span>
                                 </div>
-                                ${online ? `
-                                <div class="metrics-row">
-                                    <span class="metric-badge">CPU: ${b.cpu}</span>
-                                    <span class="metric-badge">RAM: ${b.ram}</span>
-                                </div>` : ''}
+                                ${online ? `<div class="metrics-row"><span class="metric-badge">CPU: ${b.cpu}</span><span class="metric-badge">RAM: ${b.ram}</span></div>` : ''}
                                 <div class="actions">
                                     <button class="act-btn b-start" onclick="actionBot('start', '${b.name}')">START</button>
                                     <button class="act-btn b-stop" onclick="actionBot('stop', '${b.name}')">STOP</button>
@@ -764,16 +491,13 @@ def register():
     password = data.get('password', '')
     if not email or '@gmail.com' not in email:
         return jsonify({'error': 'Valid Gmail ID required'}), 400
-    
     with open(USERS_FILE, 'r') as f:
         users = json.load(f)
     if email in users:
         return jsonify({'error': 'Account already exists! Please login.'}), 400
-    
     users[email] = password
     with open(USERS_FILE, 'w') as f:
         json.dump(users, f, indent=4)
-    
     session['user'] = email
     return jsonify({'message': 'Registered successfully'})
 
@@ -782,16 +506,12 @@ def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password', '')
-    
     with open(USERS_FILE, 'r') as f:
         users = json.load(f)
-        
     if email not in users:
         return jsonify({'error': 'Account not found! Please register first.'}), 400
-        
     if users.get(email) != password:
         return jsonify({'error': 'Incorrect password!'}), 400
-        
     session['user'] = email
     return jsonify({'message': 'Logged in successfully'})
 
@@ -837,21 +557,15 @@ def upload_file():
         user_dir = get_user_folder()
         if not user_dir:
             return jsonify({'error': 'Unauthorized user session'}), 401
-            
         if 'file' not in request.files:
             return jsonify({'error': 'No file part'}), 400
         file = request.files['file']
         if file.filename == '':
             return jsonify({'error': 'No selected file'}), 400
-        
         filename = secure_filename(file.filename)
         filepath = os.path.join(user_dir, filename)
         file.save(filepath)
-        
-        if filename.endswith('.py'):
-            threading.Thread(target=universal_auto_install, args=(filepath,), daemon=True).start()
-            
-        return jsonify({'message': f'Uploaded & Installing libraries for {filename}!', 'filename': filename})
+        return jsonify({'message': f'Uploaded {filename} successfully!', 'filename': filename})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -860,7 +574,6 @@ def get_code(filename):
     if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
     user_dir = get_user_folder()
     if not user_dir: return jsonify({'error': 'Unauthorized'}), 401
-    
     filepath = os.path.join(user_dir, filename)
     if not os.path.exists(filepath): return jsonify({'error': 'File not found'}), 404
     try:
@@ -875,7 +588,6 @@ def save_code(filename):
     if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
     user_dir = get_user_folder()
     if not user_dir: return jsonify({'error': 'Unauthorized'}), 401
-    
     filepath = os.path.join(user_dir, filename)
     if not os.path.exists(filepath): return jsonify({'error': 'File not found'}), 404
     try:
@@ -883,11 +595,7 @@ def save_code(filename):
         code = data.get('code', '')
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(code)
-        
-        if filename.endswith('.py'):
-            threading.Thread(target=universal_auto_install, args=(filepath,), daemon=True).start()
-            
-        return jsonify({'message': f'Updated & Checked {filename}!'})
+        return jsonify({'message': f'Updated {filename} successfully!'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -896,7 +604,6 @@ def list_bots():
     if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
     user_dir = get_user_folder()
     if not user_dir: return jsonify({'error': 'Unauthorized'}), 401
-    
     files = os.listdir(user_dir) if os.path.exists(user_dir) else []
     bots = []
     for f in sorted(files):
@@ -923,13 +630,10 @@ def start_bot(filename):
     if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
     user_dir = get_user_folder()
     if not user_dir: return jsonify({'error': 'Unauthorized'}), 401
-    
     filepath = os.path.join(user_dir, filename)
     if not os.path.exists(filepath): return jsonify({'error': 'File not found'}), 404
-    
     log_path = filepath + '.log'
     proc_key = f"{session.get('user')}:{filename}"
-    
     if proc_key in active_processes:
         try:
             pid = active_processes[proc_key].get('pid')
@@ -937,7 +641,6 @@ def start_bot(filename):
         except:
             pass
         active_processes.pop(proc_key, None)
-
     try:
         log_file_obj = open(log_path, 'a', encoding='utf-8')
         proc = subprocess.Popen([sys.executable, '-u', filepath], stdout=log_file_obj, stderr=log_file_obj, start_new_session=True)
@@ -966,7 +669,6 @@ def delete_bot(filename):
     if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
     user_dir = get_user_folder()
     if not user_dir: return jsonify({'error': 'Unauthorized'}), 401
-    
     filepath = os.path.join(user_dir, filename)
     proc_key = f"{session.get('user')}:{filename}"
     desired_states.pop(proc_key, None)
@@ -986,7 +688,6 @@ def get_log(filename):
     if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
     user_dir = get_user_folder()
     if not user_dir: return jsonify({'error': 'Unauthorized'}), 401
-    
     log_path = os.path.join(user_dir, filename + '.log')
     if os.path.exists(log_path):
         try:
