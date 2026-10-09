@@ -1,10 +1,23 @@
-import os, subprocess, psutil, re, threading, socket, time, random, zipfile, json, sys
+import os
+import sys
+
+# Force release ports to avoid Address already in use error
+os.system("fuser -k 5050/tcp 2>/dev/null")
+
+import subprocess
+import threading
+import socket
+import time
+import random
+import re
+import json
 from flask import Flask, jsonify, render_template_string, request, session, redirect, url_for
 from waitress import serve
 from werkzeug.utils import secure_filename
+import psutil
 
 app = Flask(__name__)
-app.secret_key = 'nexus_secret_key_session'
+app.secret_key = 'nexus_secure_session_key_portal'
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'hosted_bots')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -19,6 +32,52 @@ active_processes = {}
 desired_states = {}
 current_cpu = 5.2
 
+LIB_MAP = {
+    "telegram": "python-telegram-bot",
+    "telethon": "telethon",
+    "pyrogram": "pyrogram",
+    "tgcrypto": "tgcrypto",
+    "discord": "discord.py",
+    "pymongo": "pymongo",
+    "dns": "dnspython",
+    "flask": "flask",
+    "requests": "requests",
+    "bs4": "beautifulsoup4",
+    "aiohttp": "aiohttp",
+    "PIL": "Pillow",
+    "cv2": "opencv-python",
+    "numpy": "numpy",
+    "psutil": "psutil",
+    "motor": "motor",
+    "dotenv": "python-dotenv",
+    "cryptography": "cryptography"
+}
+
+def auto_install_dependencies(script_path):
+    try:
+        with open(script_path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        
+        imports = re.findall(r'^(?:import|from)\s+([a-zA-Z0-9_]+)', content, re.MULTILINE)
+        to_install = set()
+        
+        for imp in imports:
+            if imp in LIB_MAP:
+                to_install.add(LIB_MAP[imp])
+                
+        if "pyrogram" in content.lower():
+            to_install.add("tgcrypto")
+            to_install.add("pydantic")
+            
+        if "pymongo" in content.lower() or "motor" in content.lower():
+            to_install.add("dnspython")
+
+        for lib in to_install:
+            print(f"📦 [AUTO-INSTALLER] Installing required library: {lib}...")
+            os.system(f"{sys.executable} -m pip install --no-cache-dir --upgrade {lib}")
+    except Exception as e:
+        print(f"⚠️ Dependency installer warning: {e}")
+
 def get_user_folder():
     if 'user' not in session:
         return None
@@ -26,41 +85,6 @@ def get_user_folder():
     user_dir = os.path.join(UPLOAD_FOLDER, safe_email)
     os.makedirs(user_dir, exist_ok=True)
     return user_dir
-
-def auto_install_requirements(filepath):
-    """Automatically scans the Python script for imports and installs missing packages via pip."""
-    try:
-        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
-            content = f.read()
-        
-        # Find all import and from statements
-        import_patterns = re.findall(r'^\s*(?:import\s+([a-zA-Z0-9_]+)|from\s+([a-zA-Z0-9_]+)\s+import)', content, re.MULTILINE)
-        
-        # Python standard library modules to skip
-        stdlib_modules = {
-            'os', 'sys', 'json', 'time', 'math', 'random', 're', 'subprocess', 
-            'platform', 'datetime', 'sqlite3', 'asyncio', 'threading', 'collections', 
-            'logging', 'shutil', 'socket', 'http', 'urllib', 'email', 'io', 'hashlib', 
-            'base64', 'queue', 'typing', 'string', 'signal'
-        }
-        
-        modules_to_install = set()
-        for match in import_patterns:
-            mod = match[0] or match[1]
-            if mod and mod not in stdlib_modules:
-                modules_to_install.add(mod)
-                
-        for mod in modules_to_install:
-            try:
-                __import__(mod)
-            except ImportError:
-                print(f"📦 Auto-installing missing module: {mod}")
-                try:
-                    subprocess.check_call([sys.executable, "-m", "pip", "install", mod])
-                except Exception as err:
-                    print(f"Failed to install {mod}: {err}")
-    except Exception as e:
-        print(f"Error parsing imports: {e}")
 
 def cpu_tracker_loop():
     global current_cpu
@@ -121,7 +145,7 @@ AUTO_PILOT_HTML = """
             color: var(--text-main); 
             font-family: 'Inter', sans-serif; 
             padding: 16px; 
-            padding-bottom: 80px;
+            padding-bottom: 70px;
             min-height: 100vh;
         }
         
@@ -178,50 +202,37 @@ AUTO_PILOT_HTML = """
         }
         .badge { font-size: 8px; color: var(--neon-cyan); font-weight: 700; font-family: 'Orbitron', sans-serif; }
 
-        .auth-wrapper {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 85vh;
-        }
-
+        .auth-wrapper { display: flex; align-items: center; justify-content: center; min-height: 85vh; }
         .auth-box {
             background: rgba(11, 19, 41, 0.95);
-            padding: 35px 24px;
+            padding: 30px 20px;
             border-radius: 20px;
             border: 1px solid rgba(0, 243, 255, 0.4);
-            box-shadow: 0 0 35px rgba(0, 243, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
             text-align: center;
             width: 100%;
-            max-width: 420px;
         }
-        .auth-box h2 { font-family: 'Orbitron'; font-size: 20px; color: var(--neon-cyan); margin-bottom: 24px; letter-spacing: 1px; }
+        .auth-box h2 { font-family: 'Orbitron'; font-size: 18px; color: var(--neon-cyan); margin-bottom: 20px; }
         
-        .tabs { display: flex; gap: 10px; margin-bottom: 22px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
         .tab-btn {
             flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
-            color: var(--text-muted); padding: 14px; font-size: 12px; font-family: 'Orbitron';
+            color: var(--text-muted); padding: 12px; font-size: 11px; font-family: 'Orbitron';
             font-weight: 700; border-radius: 10px; cursor: pointer; text-align: center;
-            transition: all 0.2s ease;
         }
         .tab-btn.active { background: rgba(0, 243, 255, 0.15); color: var(--neon-cyan); border-color: rgba(0, 243, 255, 0.5); }
 
         .input-field {
             width: 100%;
             background: #040814;
-            border: 1px solid rgba(0, 243, 255, 0.35);
-            padding: 16px 18px;
-            border-radius: 12px;
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            padding: 14px 16px;
+            border-radius: 10px;
             color: #fff;
             font-family: 'JetBrains Mono';
-            font-size: 14px;
-            margin-bottom: 18px;
+            font-size: 13px;
+            margin-bottom: 15px;
             outline: none;
-            transition: all 0.3s ease;
-        }
-        .input-field:focus {
-            border-color: var(--neon-cyan);
-            box-shadow: 0 0 12px rgba(0, 243, 255, 0.3);
         }
 
         .stats-grid {
@@ -297,19 +308,7 @@ AUTO_PILOT_HTML = """
             color: var(--text-muted); text-transform: uppercase; 
             display: flex; justify-content: space-between; align-items: center;
         }
-
-        .deploy-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-        .deploy-tab-btn {
-            flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
-            color: var(--text-muted); padding: 10px; font-size: 10px; font-family: 'Orbitron';
-            font-weight: 700; border-radius: 8px; cursor: pointer; text-align: center;
-            transition: all 0.2s ease;
-        }
-        .deploy-tab-btn.active { background: rgba(0, 243, 255, 0.15); color: var(--neon-cyan); border-color: rgba(0, 243, 255, 0.5); }
         
-        .deploy-section { display: none; }
-        .deploy-section.active { display: block; }
-
         .file-upload-wrapper {
             background: #040814;
             border: 2px dashed rgba(0, 243, 255, 0.3);
@@ -335,9 +334,9 @@ AUTO_PILOT_HTML = """
         
         .btn { 
             background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
-            color: #050814; border: none; padding: 16px; width: 100%; 
-            font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 13px; 
-            border-radius: 12px; cursor: pointer; letter-spacing: 1px;
+            color: #050814; border: none; padding: 14px; width: 100%; 
+            font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; 
+            border-radius: 10px; cursor: pointer; letter-spacing: 1px;
             position: relative; overflow: hidden; transition: all 0.2s ease;
         }
         .btn:active { transform: scale(0.97); }
@@ -392,35 +391,28 @@ AUTO_PILOT_HTML = """
             background: rgba(11, 19, 41, 0.95);
             border-top: 1px solid rgba(0, 243, 255, 0.25);
             display: flex; justify-content: space-around; padding: 10px 0;
-            z-index: 999; backdrop-filter: blur(10px);
+            z-index: 99; backdrop-filter: blur(10px);
         }
         .nav-item {
             background: none; border: none; color: var(--text-muted);
             font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700;
             cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
-            transition: color 0.2s;
         }
         .nav-item.active { color: var(--neon-cyan); }
 
         .view-section { display: none; }
         .view-section.active { display: block; }
 
-        #editorModal, #policyModal, #supportModal {
+        #editorModal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 8, 20, 0.9); z-index: 1000;
+            background: rgba(5, 8, 20, 0.9); z-index: 100;
             padding: 16px; align-items: center; justify-content: center;
         }
-        .modal-content {
-            background: var(--card-bg); width: 100%; max-width: 480px; max-height: 85vh;
+        .editor-content {
+            background: var(--card-bg); width: 100%; max-width: 480px; height: 85vh;
             border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.35);
             display: flex; flex-direction: column; padding: 16px;
         }
-        .modal-body {
-            overflow-y: auto; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;
-        }
-        .modal-body h3 { color: var(--neon-cyan); font-family: 'Orbitron'; font-size: 12px; margin-bottom: 8px; }
-        .modal-body p { margin-bottom: 8px; }
-
         .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .editor-title { font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 700; color: #fff; }
         .code-textarea {
@@ -437,7 +429,7 @@ AUTO_PILOT_HTML = """
             background: #0e1938; color: var(--neon-cyan); padding: 10px 20px; 
             font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; border-radius: 20px; 
             border: 1px solid rgba(0, 243, 255, 0.4);
-            transition: transform 0.2s ease; z-index: 1001;
+            transition: transform 0.2s ease; z-index: 101;
         }
         #toast.show { transform: translateX(-50%) translateY(0); }
     </style>
@@ -460,23 +452,19 @@ AUTO_PILOT_HTML = """
         <script>
             function showToast(msg) {
                 const t = document.getElementById('toast');
-                if(!t) return;
                 t.innerText = msg; t.classList.add('show');
                 setTimeout(() => t.classList.remove('show'), 2000);
             }
-
             function switchAuthTab(mode) {
                 document.getElementById('tabLogin').classList.toggle('active', mode === 'login');
                 document.getElementById('tabReg').classList.toggle('active', mode === 'register');
                 document.getElementById('authSubmitBtn').innerText = mode === 'login' ? 'LOGIN ACCOUNT' : 'CREATE ACCOUNT';
                 document.getElementById('authSubmitBtn').setAttribute('onclick', `handleAuth('${mode}')`);
             }
-
             async function handleAuth(mode) {
                 const email = document.getElementById('authEmail').value;
                 const password = document.getElementById('authPass').value;
-                if(!email) { showToast('ERR: ENTER GMAIL ID!'); return; }
-                
+                if(!email) { showToast('ERR: ENTER GMAIL ID'); return; }
                 try {
                     const res = await fetch('/' + mode, {
                         method: 'POST',
@@ -484,20 +472,16 @@ AUTO_PILOT_HTML = """
                         body: JSON.stringify({email, password})
                     });
                     const data = await res.json();
-                    if(data.error) { 
-                        showToast('ERR: ' + data.error); 
-                    } else { 
+                    if(data.error) { showToast('ERR: ' + data.error); }
+                    else { 
                         showToast(data.message || 'SUCCESS');
                         setTimeout(() => window.location.reload(), 1000);
                     }
-                } catch(e) {
-                    showToast('ERR: CONNECTION FAILED');
-                }
+                } catch(e) { showToast('ERR: CONNECTION FAILED'); }
             }
         </script>
         {% else %}
         
-        <!-- HEADER WITH ONLINE BADGE -->
         <div class="ring-header">
             <div class="ring-avatar">
                 <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -506,8 +490,8 @@ AUTO_PILOT_HTML = """
                 </svg>
             </div>
             <div class="ring-info">
-                <h2>NEXUS-X v6</h2>
-                <p>CYBER RING CORE</p>
+                <h2>NEXUS-X v6.5</h2>
+                <p>SECURE USER CORE</p>
             </div>
             <div class="status-badge-wrapper">
                 <div class="online-dot"></div>
@@ -515,16 +499,15 @@ AUTO_PILOT_HTML = """
             </div>
         </div>
 
-        <!-- HOME VIEW -->
         <div id="homeView" class="view-section active">
             <div class="stats-grid">
                 <div class="stat-box">
                     <span class="stat-label">ENGINE MODE</span>
-                    <span class="stat-val" style="color: var(--neon-cyan);">STABLE</span>
+                    <span class="stat-val" style="color: var(--neon-cyan);">AUTO-PIP</span>
                 </div>
                 <div class="stat-box">
                     <span class="stat-label">LATENCY</span>
-                    <span class="stat-val" style="color: var(--neon-purple);">8ms [OK]</span>
+                    <span class="stat-val" style="color: var(--neon-purple);">4ms [OPTIMIZED]</span>
                 </div>
             </div>
 
@@ -549,24 +532,10 @@ AUTO_PILOT_HTML = """
             
             <div class="card">
                 <div class="card-title"><span>⚡ DEPLOY ENGINE CORE</span></div>
-                <div class="deploy-tabs">
-                    <div class="deploy-tab-btn active" id="deployTab1" onclick="switchDeployTab(1)">OPTION 1 (PY)</div>
-                    <div class="deploy-tab-btn" id="deployTab2" onclick="switchDeployTab(2)">OPTION 2 (ZIP / PHP / JS)</div>
+                <div class="file-upload-wrapper">
+                    <input type="file" id="botFile" accept=".py">
                 </div>
-                
-                <div class="deploy-section active" id="secOption1">
-                    <div class="file-upload-wrapper">
-                        <input type="file" id="pyBotFile" accept=".py">
-                    </div>
-                    <button class="btn" onclick="deployBot('py')">UPLOAD & DEPLOY PYTHON BOT</button>
-                </div>
-
-                <div class="deploy-section" id="secOption2">
-                    <div class="file-upload-wrapper">
-                        <input type="file" id="multiBotFile" accept=".zip,.php,.js">
-                    </div>
-                    <button class="btn" onclick="deployBot('multi')">UPLOAD & DEPLOY BUNDLE/SCRIPT</button>
-                </div>
+                <button class="btn" onclick="deployBot()">UPLOAD & AUTO-INSTALL DEPENDENCIES</button>
             </div>
             
             <div class="card">
@@ -589,7 +558,6 @@ AUTO_PILOT_HTML = """
             </div>
         </div>
 
-        <!-- PROFILE VIEW -->
         <div id="profileView" class="view-section">
             <div class="card" style="text-align: center; padding: 25px 20px;">
                 <div class="ring-avatar" style="margin: 0 auto 12px auto; width: 60px; height: 60px;">
@@ -599,33 +567,20 @@ AUTO_PILOT_HTML = """
                     </svg>
                 </div>
                 <div style="font-family: 'Orbitron'; font-size: 10px; color: var(--text-muted); margin-bottom: 4px;">LOGGED IN GMAIL</div>
-                <div style="font-family: 'JetBrains Mono'; font-size: 12px; color: var(--neon-cyan); margin-bottom: 18px; word-break: break-all;">{{ user_email }}</div>
-                
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <button class="btn" style="background: rgba(0, 243, 255, 0.1); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); padding: 12px; font-size: 11px;" onclick="openPolicyModal()">📜 PLATFORM POLICY & RULES</button>
-                    <button class="btn" style="background: rgba(176, 0, 255, 0.12); color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.4); padding: 12px; font-size: 11px;" onclick="openSupportModal()">🛠️ HELP & SUPPORT</button>
-                    <button class="btn" style="background: linear-gradient(135deg, #ff3366, #ff0055); color: #fff; padding: 14px; font-size: 11px;" onclick="location.href='/logout'">🚪 LOGOUT ACCOUNT</button>
-                </div>
+                <div style="font-family: 'JetBrains Mono'; font-size: 12px; color: var(--neon-cyan); margin-bottom: 20px; word-break: break-all;">{{ user_email }}</div>
+                <button class="btn" style="background: linear-gradient(135deg, #ff3366, #ff0055); color: #fff; padding: 14px;" onclick="location.href='/logout'">🚪 LOGOUT ACCOUNT</button>
             </div>
         </div>
 
-        <!-- BOTTOM NAVIGATION BAR -->
         <div class="bottom-nav">
-            <button class="nav-item active" id="navHomeBtn" onclick="switchNav('home')">
-                <span>🏠</span>
-                <span>HOME</span>
-            </button>
-            <button class="nav-item" id="navProfileBtn" onclick="switchNav('profile')">
-                <span>👤</span>
-                <span>PROFILE</span>
-            </button>
+            <button class="nav-item active" id="navHomeBtn" onclick="switchNav('home')"><span>🏠</span><span>HOME</span></button>
+            <button class="nav-item" id="navProfileBtn" onclick="switchNav('profile')"><span>👤</span><span>PROFILE</span></button>
         </div>
         {% endif %}
     </div>
 
-    <!-- CODE EDITOR MODAL -->
     <div id="editorModal">
-        <div class="modal-content" style="height: 85vh;">
+        <div class="editor-content">
             <div class="editor-header">
                 <span id="editorFileName" class="editor-title">EDIT CODE</span>
                 <button class="close-term" onclick="closeEditor()">CLOSE</button>
@@ -634,46 +589,6 @@ AUTO_PILOT_HTML = """
             <div class="editor-footer">
                 <button class="btn" style="padding: 10px;" onclick="saveCode()">💾 SAVE & APPLY CODE</button>
             </div>
-        </div>
-    </div>
-
-    <!-- POLICY MODAL -->
-    <div id="policyModal">
-        <div class="modal-content">
-            <div class="editor-header">
-                <span class="editor-title">📜 PLATFORM POLICY & RULES</span>
-                <button class="close-term" onclick="closePolicyModal()">CLOSE</button>
-            </div>
-            <div class="modal-body">
-                <h3>1. LEGAL VS ILLEGAL HOSTING RULES</h3>
-                <p><strong>Allowed (Legal Bots):</strong> Standard utility bots, Telegram automated workflow bots, calculator tools, custom web scrapers for public data, database-backed bots, educational PHP/JS scripts, and personal management tools are fully permitted.</p>
-                <p><strong>Prohibited (Illegal / Harmful Content):</strong> Hosting DDoS scripts, malware, brute-force crackers, phishing portals, unauthorized carding tools, cryptocurrency miners, or any script targeting cyberattacks on external networks is strictly banned.</p>
-                
-                <h3>2. RESOURCE FAIR USAGE</h3>
-                <p>Each user account is allocated isolated storage and continuous execution runtime. Excessive abuse of system RAM, storage overloads, or background infinite loops causing core thread blocking will result in immediate termination of the instance.</p>
-                
-                <h3>3. PRIVACY & DATA ISOLATION</h3>
-                <p>All files uploaded to your workspace are completely encrypted and isolated. No other user can view, download, modify, or execute your deployed files or logs. Security compliance is automatically enforced by NEXUS-X core.</p>
-            </div>
-            <button class="btn" style="padding: 10px; font-size: 10px;" onclick="closePolicyModal()">I UNDERSTAND</button>
-        </div>
-    </div>
-
-    <!-- SUPPORT MODAL -->
-    <div id="supportModal">
-        <div class="modal-content">
-            <div class="editor-header">
-                <span class="editor-title">🛠️ SUPPORT & ASSISTANCE</span>
-                <button class="close-term" onclick="closeSupportModal()">CLOSE</button>
-            </div>
-            <div class="modal-body">
-                <h3>NEED HELP WITH DEPLOYMENT?</h3>
-                <p>If your bot crashes, fails to start, or throws database connection errors, check the live terminal logs directly from the home dashboard instance card.</p>
-                <p><strong>Common Solutions:</strong></p>
-                <p>• Ensure required python libraries are installed or included in your script imports.<br>• Verify syntax errors using the built-in code editor.<br>• Restart the instance if background process locks occur.</p>
-                <p>For custom inquiries or infrastructure assistance, reach out via your administrator communication channel.</p>
-            </div>
-            <button class="btn" style="padding: 10px; font-size: 10px;" onclick="closeSupportModal()">CLOSE SUPPORT</button>
         </div>
     </div>
 
@@ -689,25 +604,11 @@ AUTO_PILOT_HTML = """
             document.getElementById('navProfileBtn').classList.toggle('active', viewName === 'profile');
         }
 
-        function switchDeployTab(optionNum) {
-            document.getElementById('deployTab1').classList.toggle('active', optionNum === 1);
-            document.getElementById('deployTab2').classList.toggle('active', optionNum === 2);
-            document.getElementById('secOption1').classList.toggle('active', optionNum === 1);
-            document.getElementById('secOption2').classList.toggle('active', optionNum === 2);
-        }
-
         function showToast(msg) {
             const t = document.getElementById('toast');
-            if(!t) return;
             t.innerText = msg; t.classList.add('show');
             setTimeout(() => t.classList.remove('show'), 2000);
         }
-
-        function openPolicyModal() { document.getElementById('policyModal').style.display = 'flex'; }
-        function closePolicyModal() { document.getElementById('policyModal').style.display = 'none'; }
-
-        function openSupportModal() { document.getElementById('supportModal').style.display = 'flex'; }
-        function closeSupportModal() { document.getElementById('supportModal').style.display = 'none'; }
 
         async function updateSystemStats() {
             try {
@@ -724,15 +625,13 @@ AUTO_PILOT_HTML = """
             } catch(e) {}
         }
 
-        async function deployBot(type) {
-            const inputId = type === 'py' ? 'pyBotFile' : 'multiBotFile';
-            const fileInput = document.getElementById(inputId);
-            if(!fileInput || !fileInput.files[0]) { showToast('ERR: SELECT A FILE'); return; }
-            
+        async function deployBot() {
+            const fileInput = document.getElementById('botFile');
+            if(!fileInput.files[0]) { showToast('ERR: SELECT A .PY FILE'); return; }
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('license_key', KEY);
-            showToast('UPLOADING & DEPENDENCY CHECK...');
+            showToast('UPLOADING & AUTO-CONFIGURING...');
             try {
                 const res = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await res.json();
@@ -786,7 +685,7 @@ AUTO_PILOT_HTML = """
         async function actionBot(act, filename) {
             showToast(`${act.toUpperCase()}ING...`);
             try {
-                const res = await fetch(`/${act}/${encodeURIComponent(filename)}?key=${KEY}`, { method: 'POST' });
+                const res = await fetch(`/${act}/${filename}?key=${KEY}`, { method: 'POST' });
                 const data = await res.json();
                 if(data.error) showToast('ERR: ' + data.error);
                 else {
@@ -841,7 +740,7 @@ AUTO_PILOT_HTML = """
             document.getElementById('termFileName').innerText = 'LOGS: ' + filename;
             fetchLog();
             if(logInterval) clearInterval(logInterval);
-            logInterval = setInterval(fetchLog, 6000);
+            logInterval = setInterval(fetchLog, 5000);
         }
 
         function toggleMinimize() {
@@ -881,8 +780,8 @@ AUTO_PILOT_HTML = """
         if(document.getElementById('instanceList')) {
             loadInstances();
             updateSystemStats();
-            setInterval(loadInstances, 10000);
-            setInterval(updateSystemStats, 6000);
+            setInterval(loadInstances, 8000);
+            setInterval(updateSystemStats, 5000);
         }
     </script>
 </body>
@@ -904,7 +803,7 @@ def register():
     
     users[email] = password
     with open(USERS_FILE, 'w') as f:
-        json.dump(users, f)
+        json.dump(users, f, indent=4)
     
     session['user'] = email
     return jsonify({'message': 'Registered successfully'})
@@ -921,7 +820,7 @@ def login():
     if email not in users:
         return jsonify({'error': 'Account not found! Please register first.'}), 400
         
-    if users[email] != password:
+    if users.get(email) != password:
         return jsonify({'error': 'Incorrect password!'}), 400
         
     session['user'] = email
@@ -944,7 +843,7 @@ def system_stats():
     global current_cpu
     return jsonify({
         'cpu_percent': current_cpu,
-        'ram_total': 4096.0, 'ram_used': 1240.5, 'ram_percent': 30.2,
+        'ram_total': 4096.0, 'ram_used': 1280.0, 'ram_percent': 31.2,
         'disk_total': 64.0, 'disk_used': 18.5, 'disk_percent': 28.9
     })
 
@@ -967,19 +866,10 @@ def upload_file():
         filepath = os.path.join(user_dir, filename)
         file.save(filepath)
         
-        # Trigger automatic dependency installation for Python scripts
         if filename.endswith('.py'):
-            auto_install_requirements(filepath)
-        
-        if filename.endswith('.zip'):
-            extract_path = os.path.join(user_dir, filename.replace('.zip', ''))
-            os.makedirs(extract_path, exist_ok=True)
-            with zipfile.ZipFile(filepath, 'r') as zip_ref:
-                zip_ref.extractall(extract_path)
-            os.remove(filepath)
-            return jsonify({'message': f'Extracted Zip archive: {filename}', 'filename': filename})
-        
-        return jsonify({'message': f'Uploaded & Auto-Installed Dependencies: {filename}!', 'filename': filename})
+            auto_install_dependencies(filepath)
+            
+        return jsonify({'message': f'Uploaded & Auto-Configured {filename}!', 'filename': filename})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1012,11 +902,10 @@ def save_code(filename):
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(code)
         
-        # Re-check and install dependencies if code is edited and saved
         if filename.endswith('.py'):
-            auto_install_requirements(filepath)
+            auto_install_dependencies(filepath)
             
-        return jsonify({'message': f'Updated and checked dependencies for {filename}!'})
+        return jsonify({'message': f'Updated & Checked {filename}!'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1029,7 +918,7 @@ def list_bots():
     files = os.listdir(user_dir) if os.path.exists(user_dir) else []
     bots = []
     for f in sorted(files):
-        if f.endswith(('.py', '.php', '.js')) or os.path.isdir(os.path.join(user_dir, f)):
+        if f.endswith('.py'):
             is_running = False
             cpu_usage, ram_usage = "0%", "0 MB"
             proc_key = f"{session.get('user')}:{f}"
@@ -1054,25 +943,19 @@ def start_bot(filename):
     if not user_dir: return jsonify({'error': 'Unauthorized'}), 401
     
     filepath = os.path.join(user_dir, filename)
+    if not os.path.exists(filepath): return jsonify({'error': 'File not found'}), 404
+    
     log_path = filepath + '.log'
     proc_key = f"{session.get('user')}:{filename}"
-    
-    # Ensure dependencies are checked right before starting as well
     if filename.endswith('.py'):
-        auto_install_requirements(filepath)
-    
-    cmd = ['python3', '-u', filepath]
-    if filename.endswith('.js'):
-        cmd = ['node', filepath]
-    elif filename.endswith('.php'):
-        cmd = ['php', filepath]
+        auto_install_dependencies(filepath)
     
     try:
         log_file_obj = open(log_path, 'a', encoding='utf-8')
-        proc = subprocess.Popen(cmd, stdout=log_file_obj, stderr=log_file_obj, start_new_session=True)
+        proc = subprocess.Popen(['python3', '-u', filepath], stdout=log_file_obj, stderr=log_file_obj, start_new_session=True)
         active_processes[proc_key] = {'proc': proc, 'pid': proc.pid}
         desired_states[proc_key] = True
-        return jsonify({'message': f'Started {filename}'})
+        return jsonify({'message': f'Started {filename} successfully'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1096,9 +979,9 @@ def delete_bot(filename):
     user_dir = get_user_folder()
     if not user_dir: return jsonify({'error': 'Unauthorized'}), 401
     
+    filepath = os.path.join(user_dir, filename)
     proc_key = f"{session.get('user')}:{filename}"
     desired_states.pop(proc_key, None)
-    filepath = os.path.join(user_dir, filename)
     if proc_key in active_processes:
         try:
             pid = active_processes[proc_key].get('pid')
@@ -1106,14 +989,8 @@ def delete_bot(filename):
         except:
             pass
         active_processes.pop(proc_key, None)
-    if os.path.exists(filepath):
-        if os.path.isdir(filepath):
-            import shutil
-            shutil.rmtree(filepath)
-        else:
-            os.remove(filepath)
-    if os.path.exists(filepath + '.log'):
-        os.remove(filepath + '.log')
+    if os.path.exists(filepath): os.remove(filepath)
+    if os.path.exists(filepath + '.log'): os.remove(filepath + '.log')
     return jsonify({'message': f'Deleted {filename}'})
 
 @app.route('/get_log/<filename>', methods=['GET'])
@@ -1128,7 +1005,7 @@ def get_log(filename):
             with open(log_path, 'rb') as lf:
                 lf.seek(0, 2)
                 filesize = lf.tell()
-                lf.seek(max(0, filesize - 15000), 0)
+                lf.seek(max(0, filesize - 12000), 0)
                 content = lf.read().decode('utf-8', errors='ignore')
         except:
             content = "Error reading log..."
@@ -1148,9 +1025,9 @@ def get_local_ip():
 
 if __name__ == '__main__':
     local_ip = get_local_ip()
-    print("\n" + "="*40)
-    print("🚀 NEXUS-X v6 CLOUD IDE STARTED WITH AUTO-PIP DEPENDENCY INSTALLER!")
-    print(f"👉 Local URL: http://127.0.0.1:5000")
-    print(f"👉 Network IP: http://{local_ip}:5000")
-    print("="*40 + "\n")
-    serve(app, host='0.0.0.0', port=5000, threads=8)
+    print("\n" + "="*50)
+    print("🚀 NEXUS-X AUTH & AUTO-PIP IDE RUNNING (PORT 5050)")
+    print(f"👉 Local URL: http://127.0.0.1:5050")
+    print(f"👉 Network IP: http://{local_ip}:5050")
+    print("="*50 + "\n")
+    serve(app, host='0.0.0.0', port=5050, threads=8)
