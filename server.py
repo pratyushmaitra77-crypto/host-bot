@@ -37,51 +37,55 @@ active_processes = {}
 desired_states = {}
 current_cpu = 5.2
 
-LIB_MAP = {
-    "telegram": "python-telegram-bot",
-    "telethon": "telethon",
-    "pyrogram": "pyrogram",
-    "tgcrypto": "tgcrypto",
-    "discord": "discord.py",
-    "pymongo": "pymongo",
-    "dns": "dnspython",
-    "flask": "flask",
-    "requests": "requests",
-    "bs4": "beautifulsoup4",
-    "aiohttp": "aiohttp",
-    "PIL": "Pillow",
-    "cv2": "opencv-python",
-    "numpy": "numpy",
-    "psutil": "psutil",
-    "motor": "motor",
-    "dotenv": "python-dotenv",
-    "cryptography": "cryptography"
-}
-
-def auto_install_dependencies(script_path):
+# Universal Auto-Installer: Reads ANY python script and installs required packages dynamically
+def universal_auto_install(script_path):
     try:
         with open(script_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
         
-        imports = re.findall(r'^(?:import|from)\s+([a-zA-Z0-9_]+)', content, re.MULTILINE)
-        to_install = set()
+        # Regex to find all imported modules (supports 'import x', 'import x.y', 'from x import y')
+        imports = re.findall(r'^(?:import|from)\s+([a-zA-Z0-9_]+)', content, multiprocessing_filter := re.MULTILINE)
         
+        # Common standard library modules to ignore during pip install
+        stdlib_modules = {
+            'os', 'sys', 'time', 'datetime', 'json', 'math', 'random', 're', 'socket', 
+            'subprocess', 'threading', 'pathlib', 'logging', 'collections', 'itertools', 
+            'functools', 'shutil', 'http', 'urllib', 'hashlib', 'base64', 'io', 'zipfile', 'tarfile'
+        }
+        
+        packages_to_install = set()
         for imp in imports:
-            if imp in LIB_MAP:
-                to_install.add(LIB_MAP[imp])
+            if imp not in stdlib_modules and len(imp) > 1:
+                # Map specific package names if they differ from import names
+                pkg_name = imp
+                if imp == 'telegram':
+                    pkg_name = 'python-telegram-bot'
+                elif imp == 'cv2':
+                    pkg_name = 'opencv-python'
+                elif imp == 'PIL':
+                    pkg_name = 'Pillow'
+                elif imp == 'bs4':
+                    pkg_name = 'beautifulsoup4'
+                elif imp == 'dns':
+                    pkg_name = 'dnspython'
+                elif imp == 'dotenv':
+                    pkg_name = 'python-dotenv'
                 
-        if "pyrogram" in content.lower():
-            to_install.add("tgcrypto")
-            to_install.add("pydantic")
-            
-        if "pymongo" in content.lower() or "motor" in content.lower():
-            to_install.add("dnspython")
+                packages_to_install.add(pkg_name)
+        
+        # Extra safeguards for popular Telegram libraries
+        if 'pyrogram' in content.lower():
+            packages_to_install.add('tgcrypto')
+            packages_to_install.add('pydantic')
+        if 'telethon' in content.lower():
+            packages_to_install.add('pysocks')
 
-        for lib in to_install:
-            print(f"📦 [AUTO-INSTALLER] Installing required library: {lib}...")
+        for lib in packages_to_install:
+            print(f"📦 [UNIVERSAL PIP] Installing package: {lib}...")
             os.system(f"{sys.executable} -m pip install --no-cache-dir --upgrade {lib}")
+            
     except Exception as e:
-        print(f"⚠️ Dependency installer warning: {e}")
+        print(f"⚠️ Universal installer warning: {e}")
 
 def get_user_folder():
     if 'user' not in session:
@@ -522,7 +526,7 @@ AUTO_PILOT_HTML = """
                 <div class="file-upload-wrapper">
                     <input type="file" id="botFile" accept=".py">
                 </div>
-                <button class="btn" onclick="deployBot()">UPLOAD & AUTO-INSTALL DEPENDENCIES</button>
+                <button class="btn" onclick="deployBot()">UPLOAD & UNIVERSAL AUTO-INSTALL</button>
             </div>
             
             <div class="card">
@@ -621,7 +625,7 @@ AUTO_PILOT_HTML = """
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('license_key', KEY);
-            showToast('UPLOADING & AUTO-CONFIGURING...');
+            showToast('UPLOADING & DETECTING LIBS...');
             try {
                 const res = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await res.json();
@@ -870,9 +874,10 @@ def upload_file():
         file.save(filepath)
         
         if filename.endswith('.py'):
-            auto_install_dependencies(filepath)
+            # Run universal auto installer in background thread to prevent 502 gateway timeout
+            threading.Thread(target=universal_auto_install, args=(filepath,), daemon=True).start()
             
-        return jsonify({'message': f'Uploaded & Auto-Configured {filename}!', 'filename': filename})
+        return jsonify({'message': f'Uploaded & Auto-installing dependencies for {filename}!', 'filename': filename})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -906,7 +911,7 @@ def save_code(filename):
             f.write(code)
         
         if filename.endswith('.py'):
-            auto_install_dependencies(filepath)
+            threading.Thread(target=universal_auto_install, args=(filepath,), daemon=True).start()
             
         return jsonify({'message': f'Updated & Checked {filename}!'})
     except Exception as e:
@@ -950,9 +955,16 @@ def start_bot(filename):
     
     log_path = filepath + '.log'
     proc_key = f"{session.get('user')}:{filename}"
-    if filename.endswith('.py'):
-        auto_install_dependencies(filepath)
     
+    # Kill existing process if running
+    if proc_key in active_processes:
+        try:
+            pid = active_processes[proc_key].get('pid')
+            if pid and psutil.pid_exists(pid): psutil.Process(pid).terminate()
+        except:
+            pass
+        active_processes.pop(proc_key, None)
+
     try:
         log_file_obj = open(log_path, 'a', encoding='utf-8')
         proc = subprocess.Popen([sys.executable, '-u', filepath], stdout=log_file_obj, stderr=log_file_obj, start_new_session=True)
@@ -1029,7 +1041,7 @@ def get_local_ip():
 if __name__ == '__main__':
     local_ip = get_local_ip()
     print("\n" + "="*50)
-    print(f"🚀 NEXUS-X AUTH & AUTO-PIP IDE RUNNING (PORT {PORT})")
+    print(f"🚀 NEXUS-X UNIVERSAL IDE RUNNING (PORT {PORT})")
     print(f"👉 Local URL: http://127.0.0.1:{PORT}")
     print(f"👉 Network IP: http://{local_ip}:{PORT}")
     print("="*50 + "\n")
