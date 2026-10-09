@@ -9,7 +9,7 @@ app.secret_key = 'nexus_secret_key_security_999'
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'hosted_bots')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-DEFAULT_PASSWORD = 'admin123'  # Apnar login password ekhane change korte paren
+DEFAULT_PASSWORD = 'admin123'
 active_processes = {}
 desired_states = {}
 
@@ -289,7 +289,13 @@ AUTO_PILOT_HTML = """
         .control-btn { background: rgba(255, 255, 255, 0.1); color: #ccc; border: 1px solid rgba(255, 255, 255, 0.2); padding: 3px 8px; font-size: 9px; border-radius: 6px; cursor: pointer; font-family: 'Orbitron'; }
         .close-term { background: rgba(255, 0, 85, 0.2); color: #ff0055; border: 1px solid rgba(255, 0, 85, 0.4); padding: 3px 8px; font-size: 9px; border-radius: 6px; cursor: pointer; font-family: 'Orbitron'; }
 
-        /* Bottom Nav bar */
+        .input-group { margin-bottom: 12px; }
+        .input-label { font-size: 9px; font-family: 'Orbitron', sans-serif; color: var(--text-muted); display: block; margin-bottom: 4px; }
+        .input-field {
+            width: 100%; background: #02050e; border: 1px solid rgba(0, 243, 255, 0.3);
+            padding: 10px; border-radius: 8px; color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace; font-size: 11px; outline: none;
+        }
+
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: #070d21; border-top: 1px solid rgba(0, 243, 255, 0.2);
@@ -338,7 +344,6 @@ AUTO_PILOT_HTML = """
 </head>
 <body>
     <div class="container">
-        <!-- HOME VIEW -->
         <div id="homeView" class="view-section active">
             <div class="ring-header">
                 <div class="ring-avatar">
@@ -424,24 +429,25 @@ AUTO_PILOT_HTML = """
             </div>
         </div>
 
-        <!-- PROFILE VIEW -->
         <div id="profileView" class="view-section">
             <div class="card">
-                <div class="card-title"><span>👤 PROFILE & SESSION</span></div>
-                <div style="font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
-                    Status: <span style="color: var(--neon-cyan);">LOGGED IN SECURELY</span><br>
-                    Environment: Cloud IDE Core<br>
-                    Security: Password Protected Session
+                <div class="card-title"><span>👤 PROFILE & SECURITY</span></div>
+                <div class="input-group">
+                    <label class="input-label">CURRENT PASSWORD</label>
+                    <input type="password" id="oldPass" class="input-field" placeholder="Enter current password...">
                 </div>
+                <div class="input-group">
+                    <label class="input-label">NEW PASSWORD</label>
+                    <input type="password" id="newPass" class="input-field" placeholder="Enter new password...">
+                </div>
+                <button class="btn" style="margin-bottom: 12px;" onclick="changePassword()">🔑 UPDATE PASSWORD</button>
                 <button class="btn" style="background: linear-gradient(135deg, #ff0055, #ff3366); color: #fff;" onclick="logoutUser()">🔒 LOGOUT SESSION</button>
             </div>
         </div>
     </div>
 
-    <!-- Hidden file input for instance card upload -->
     <input type="file" id="instanceFileInput" style="display:none;" accept=".py,.txt" onchange="uploadExtraFile(this)">
 
-    <!-- Bottom Navigation Bar -->
     <div class="bottom-nav">
         <button class="nav-btn active" id="navHome" onclick="switchTab('home')">
             <span>🏠</span>
@@ -487,6 +493,28 @@ AUTO_PILOT_HTML = """
                 document.getElementById('profileView').classList.add('active');
                 document.getElementById('navProfile').classList.add('active');
             }
+        }
+
+        async function changePassword() {
+            const old_password = document.getElementById('oldPass').value;
+            const new_password = document.getElementById('newPass').value;
+            if(!old_password || !new_password) { showToast('ERR: FILL BOTH FIELDS'); return; }
+            showToast('UPDATING...');
+            try {
+                const res = await fetch('/change_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_password, new_password })
+                });
+                const data = await res.json();
+                if(data.error) {
+                    showToast('ERR: ' + data.error);
+                } else {
+                    showToast(data.message);
+                    document.getElementById('oldPass').value = '';
+                    document.getElementById('newPass').value = '';
+                }
+            } catch(e) { showToast('UPDATE FAILED'); }
         }
 
         async function logoutUser() {
@@ -878,6 +906,22 @@ def index():
 def logout():
     session.pop('authenticated', None)
     return jsonify({'success': True})
+
+@app.route('/change_password', methods=['POST'])
+def change_password():
+    if not session.get('authenticated'): return jsonify({'error': 'Unauthorized'}), 403
+    data = request.get_json()
+    old_pass = data.get('old_password')
+    new_pass = data.get('new_password')
+    
+    global DEFAULT_PASSWORD
+    if old_pass != DEFAULT_PASSWORD:
+        return jsonify({'error': 'Current password incorrect!'}), 400
+    if not new_pass or len(new_pass) < 3:
+        return jsonify({'error': 'Password too short!'}), 400
+        
+    DEFAULT_PASSWORD = new_pass
+    return jsonify({'message': 'Password updated successfully!'})
 
 @app.route('/system_stats', methods=['GET'])
 def system_stats():
