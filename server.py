@@ -1,4 +1,4 @@
-import os, sys, subprocess, psutil, re, threading, socket, time, random
+import os, subprocess, psutil, re, threading, socket, time, random
 from flask import Flask, jsonify, render_template_string, request
 from waitress import serve
 from werkzeug.utils import secure_filename
@@ -606,12 +606,7 @@ AUTO_PILOT_HTML = """
 def extract_imports(filepath):
     imports = set()
     std_libs = {'os', 'sys', 'time', 'json', 'math', 'random', 're', 'datetime', 'subprocess', 'shutil', 'logging', 'pathlib', 'urllib', 'http', 'asyncio', 'threading', 'queue', 'collections', 'itertools', 'functools', 'io', 'hashlib', 'base64', 'traceback'}
-    pkg_map = {
-        'PIL': 'pillow', 
-        'cv2': 'opencv-python', 
-        'telegram': 'python-telegram-bot',
-        'phonenumbers': 'phonenumbers'
-    }
+    pkg_map = {'PIL': 'pillow', 'cv2': 'opencv-python', 'telegram': 'python-telegram-bot'}
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             for line in f:
@@ -633,7 +628,7 @@ def background_setup(filepath, filename):
             log_f.write(f"-> Checking module: {lib}...\n")
             log_f.flush()
             try:
-                check_res = subprocess.run([sys.executable, '-c', f"import {lib.replace('-', '_')}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                check_res = subprocess.run(['python3', '-c', f"import {lib.replace('-', '_')}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if check_res.returncode == 0:
                     log_f.write(f"   [OK] {lib} already installed.\n")
                 else:
@@ -641,7 +636,7 @@ def background_setup(filepath, filename):
             except:
                 log_f.write(f"   [INSTALLING] {lib} missing. Installing via pip...\n")
                 log_f.flush()
-                res = subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-cache-dir', '--prefer-binary', lib], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                res = subprocess.run(['pip', 'install', '--prefer-binary', lib], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                 log_f.write(res.stdout)
                 if res.returncode == 0:
                     log_f.write(f"   [SUCCESS] Installed {lib}!\n")
@@ -657,7 +652,7 @@ def start_bot_process(filename):
         with open(log_path, 'a', encoding='utf-8') as log_file:
             log_file.write("\n\n=== [STARTED] Instance running... ===\n")
         log_file_obj = open(log_path, 'a', encoding='utf-8')
-        proc = subprocess.Popen([sys.executable, '-u', filepath], stdout=log_file_obj, stderr=log_file_obj, start_new_session=True)
+        proc = subprocess.Popen(['python3', '-u', filepath], stdout=log_file_obj, stderr=log_file_obj, start_new_session=True)
         active_processes[filename] = {'proc': proc, 'pid': proc.pid}
         desired_states[filename] = True
         return True
