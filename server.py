@@ -1,13 +1,15 @@
 import os, sys, subprocess, psutil, re, threading, socket, time, random
-from flask import Flask, jsonify, render_template_string, request
+from flask import Flask, jsonify, render_template_string, request, session, redirect, url_for
 from waitress import serve
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+app.secret_key = 'nexus_secret_key_security_999'
+
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'hosted_bots')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-DEFAULT_KEY = 'admin123'
+DEFAULT_PASSWORD = 'admin123'  # Apnar login password ekhane change korte paren
 active_processes = {}
 desired_states = {}
 
@@ -72,6 +74,7 @@ AUTO_PILOT_HTML = """
             color: var(--text-main); 
             font-family: 'Inter', sans-serif; 
             padding: 16px; 
+            padding-bottom: 80px;
             min-height: 100vh;
         }
         
@@ -286,6 +289,22 @@ AUTO_PILOT_HTML = """
         .control-btn { background: rgba(255, 255, 255, 0.1); color: #ccc; border: 1px solid rgba(255, 255, 255, 0.2); padding: 3px 8px; font-size: 9px; border-radius: 6px; cursor: pointer; font-family: 'Orbitron'; }
         .close-term { background: rgba(255, 0, 85, 0.2); color: #ff0055; border: 1px solid rgba(255, 0, 85, 0.4); padding: 3px 8px; font-size: 9px; border-radius: 6px; cursor: pointer; font-family: 'Orbitron'; }
 
+        /* Bottom Nav bar */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: #070d21; border-top: 1px solid rgba(0, 243, 255, 0.2);
+            display: flex; justify-content: space-around; padding: 10px 0; z-index: 50;
+        }
+        .nav-btn {
+            background: none; border: none; color: var(--text-muted);
+            font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700;
+            cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+        .nav-btn.active { color: var(--neon-cyan); }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
         #editorModal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(5, 8, 20, 0.9); z-index: 100;
@@ -308,7 +327,7 @@ AUTO_PILOT_HTML = """
         .empty { color: var(--text-muted); font-size: 11px; text-align: center; padding: 20px; font-family: 'JetBrains Mono', monospace; }
         
         #toast { 
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); 
+            position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(100px); 
             background: #0e1938; color: var(--neon-cyan); padding: 10px 20px; 
             font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; border-radius: 20px; 
             border: 1px solid rgba(0, 243, 255, 0.4);
@@ -319,92 +338,120 @@ AUTO_PILOT_HTML = """
 </head>
 <body>
     <div class="container">
-        <div class="ring-header">
-            <div class="ring-avatar">
-                <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="18" cy="18" r="14" stroke="#00f3ff" stroke-width="3" stroke-dasharray="6 3"/>
-                    <circle cx="18" cy="18" r="3" fill="#b000ff"/>
-                </svg>
+        <!-- HOME VIEW -->
+        <div id="homeView" class="view-section active">
+            <div class="ring-header">
+                <div class="ring-avatar">
+                    <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="18" cy="18" r="14" stroke="#00f3ff" stroke-width="3" stroke-dasharray="6 3"/>
+                        <circle cx="18" cy="18" r="3" fill="#b000ff"/>
+                    </svg>
+                </div>
+                <div class="ring-info">
+                    <h2>NEXUS-X v6</h2>
+                    <p>CYBER RING CORE // STABLE</p>
+                </div>
+                <div class="status-badge-wrapper">
+                    <div class="online-dot"></div>
+                    <span class="badge">ONLINE</span>
+                </div>
             </div>
-            <div class="ring-info">
-                <h2>NEXUS-X v6</h2>
-                <p>CYBER RING CORE // STABLE</p>
+
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span class="stat-label">ENGINE MODE</span>
+                    <span class="stat-val" style="color: var(--neon-cyan);">STABLE</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">LATENCY</span>
+                    <span class="stat-val" style="color: var(--neon-purple);">8ms [OK]</span>
+                </div>
             </div>
-            <div class="status-badge-wrapper">
-                <div class="online-dot"></div>
-                <span class="badge">ONLINE</span>
+
+            <div class="resource-card">
+                <div class="resource-title">
+                    <span>SYSTEM HARDWARE MONITOR</span>
+                    <span style="color: var(--neon-cyan);">LIVE</span>
+                </div>
+                <div class="res-item">
+                    <div class="res-info">
+                        <span>CPU USAGE</span>
+                        <span id="cpuText">0%</span>
+                    </div>
+                    <div class="res-bar-bg"><div id="cpuBar" class="res-bar-fill"></div></div>
+                </div>
+                <div class="res-item" style="margin-top: 8px;">
+                    <div class="res-info">
+                        <span>RAM USAGE</span>
+                        <span id="ramText">0 MB / 0 MB</span>
+                    </div>
+                    <div class="res-bar-bg"><div id="ramBar" class="res-bar-fill"></div></div>
+                </div>
+                <div class="res-item" style="margin-top: 8px;">
+                    <div class="res-info">
+                        <span>STORAGE USAGE</span>
+                        <span id="diskText">0 GB / 0 GB</span>
+                    </div>
+                    <div class="res-bar-bg"><div id="diskBar" class="res-bar-fill"></div></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title"><span>⚡ DEPLOY ENGINE CORE</span></div>
+                <div class="file-upload-wrapper">
+                    <input type="file" id="botFile" accept=".py,.txt">
+                </div>
+                <button class="btn" onclick="deployBot()">UPLOAD & COMPILE SCRIPT</button>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">
+                    <span>📂 ACTIVE INSTANCES</span>
+                    <button class="refresh-btn" onclick="loadInstances()">REFRESH</button>
+                </div>
+                <div id="instanceList" class="empty">Scanning storage core...</div>
+            </div>
+
+            <div class="card" id="terminalCard" style="display:none;">
+                <div class="term-header">
+                    <span id="termFileName" style="font-size:10px; font-weight:700; color:#fff; font-family:'Orbitron';">LIVE LOGS</span>
+                    <div class="term-actions">
+                        <button class="control-btn" id="minBtn" onclick="toggleMinimize()">MIN</button>
+                        <button class="close-term" onclick="closeTerminal()">CLOSE</button>
+                    </div>
+                </div>
+                <div id="terminalOutput" class="terminal-box">Waiting for stream...</div>
             </div>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-box">
-                <span class="stat-label">ENGINE MODE</span>
-                <span class="stat-val" style="color: var(--neon-cyan);">STABLE</span>
-            </div>
-            <div class="stat-box">
-                <span class="stat-label">LATENCY</span>
-                <span class="stat-val" style="color: var(--neon-purple);">8ms [OK]</span>
-            </div>
-        </div>
-
-        <div class="resource-card">
-            <div class="resource-title">
-                <span>SYSTEM HARDWARE MONITOR</span>
-                <span style="color: var(--neon-cyan);">LIVE</span>
-            </div>
-            <div class="res-item">
-                <div class="res-info">
-                    <span>CPU USAGE</span>
-                    <span id="cpuText">0%</span>
+        <!-- PROFILE VIEW -->
+        <div id="profileView" class="view-section">
+            <div class="card">
+                <div class="card-title"><span>👤 PROFILE & SESSION</span></div>
+                <div style="font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+                    Status: <span style="color: var(--neon-cyan);">LOGGED IN SECURELY</span><br>
+                    Environment: Cloud IDE Core<br>
+                    Security: Password Protected Session
                 </div>
-                <div class="res-bar-bg"><div id="cpuBar" class="res-bar-fill"></div></div>
+                <button class="btn" style="background: linear-gradient(135deg, #ff0055, #ff3366); color: #fff;" onclick="logoutUser()">🔒 LOGOUT SESSION</button>
             </div>
-            <div class="res-item" style="margin-top: 8px;">
-                <div class="res-info">
-                    <span>RAM USAGE</span>
-                    <span id="ramText">0 MB / 0 MB</span>
-                </div>
-                <div class="res-bar-bg"><div id="ramBar" class="res-bar-fill"></div></div>
-            </div>
-            <div class="res-item" style="margin-top: 8px;">
-                <div class="res-info">
-                    <span>STORAGE USAGE</span>
-                    <span id="diskText">0 GB / 0 GB</span>
-                </div>
-                <div class="res-bar-bg"><div id="diskBar" class="res-bar-fill"></div></div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-title"><span>⚡ DEPLOY ENGINE CORE</span></div>
-            <div class="file-upload-wrapper">
-                <input type="file" id="botFile" accept=".py,.txt">
-            </div>
-            <button class="btn" onclick="deployBot()">UPLOAD & COMPILE SCRIPT</button>
-        </div>
-        
-        <div class="card">
-            <div class="card-title">
-                <span>📂 ACTIVE INSTANCES</span>
-                <button class="refresh-btn" onclick="loadInstances()">REFRESH</button>
-            </div>
-            <div id="instanceList" class="empty">Scanning storage core...</div>
-        </div>
-
-        <div class="card" id="terminalCard" style="display:none;">
-            <div class="term-header">
-                <span id="termFileName" style="font-size:10px; font-weight:700; color:#fff; font-family:'Orbitron';">LIVE LOGS</span>
-                <div class="term-actions">
-                    <button class="control-btn" id="minBtn" onclick="toggleMinimize()">MIN</button>
-                    <button class="close-term" onclick="closeTerminal()">CLOSE</button>
-                </div>
-            </div>
-            <div id="terminalOutput" class="terminal-box">Waiting for stream...</div>
         </div>
     </div>
 
     <!-- Hidden file input for instance card upload -->
     <input type="file" id="instanceFileInput" style="display:none;" accept=".py,.txt" onchange="uploadExtraFile(this)">
+
+    <!-- Bottom Navigation Bar -->
+    <div class="bottom-nav">
+        <button class="nav-btn active" id="navHome" onclick="switchTab('home')">
+            <span>🏠</span>
+            <span>HOME</span>
+        </button>
+        <button class="nav-btn" id="navProfile" onclick="switchTab('profile')">
+            <span>⚙️</span>
+            <span>PROFILE</span>
+        </button>
+    </div>
 
     <div id="editorModal">
         <div class="editor-content">
@@ -421,7 +468,6 @@ AUTO_PILOT_HTML = """
 
     <div id="toast">SYSTEM READY</div>
     <script>
-        const KEY = 'admin123';
         let activeLogFile = null, logInterval = null, isMinimized = false, editingFile = null;
 
         function showToast(msg) {
@@ -430,9 +476,27 @@ AUTO_PILOT_HTML = """
             setTimeout(() => t.classList.remove('show'), 2000);
         }
 
+        function switchTab(tab) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            if(tab === 'home') {
+                document.getElementById('homeView').classList.add('active');
+                document.getElementById('navHome').classList.add('active');
+                loadInstances();
+            } else {
+                document.getElementById('profileView').classList.add('active');
+                document.getElementById('navProfile').classList.add('active');
+            }
+        }
+
+        async function logoutUser() {
+            await fetch('/logout', {method: 'POST'});
+            window.location.reload();
+        }
+
         async function updateSystemStats() {
             try {
-                const res = await fetch(`/system_stats?key=${KEY}`);
+                const res = await fetch('/system_stats');
                 const data = await res.json();
                 if(data.error) return;
 
@@ -452,7 +516,6 @@ AUTO_PILOT_HTML = """
             if(!fileInput.files[0]) { showToast('ERR: SELECT A FILE (.PY OR .TXT)'); return; }
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
-            formData.append('license_key', KEY);
             showToast('UPLOADING...');
             try {
                 const res = await fetch('/upload', { method: 'POST', body: formData });
@@ -474,7 +537,6 @@ AUTO_PILOT_HTML = """
             if(!input.files[0]) return;
             const formData = new FormData();
             formData.append('file', input.files[0]);
-            formData.append('license_key', KEY);
             showToast('UPLOADING FILE...');
             try {
                 const res = await fetch('/upload', { method: 'POST', body: formData });
@@ -491,7 +553,7 @@ AUTO_PILOT_HTML = """
 
         async function loadInstances() {
             try {
-                const res = await fetch(`/list?key=${KEY}`);
+                const res = await fetch('/list');
                 const data = await res.json();
                 const list = document.getElementById('instanceList');
                 if(!data.bots || data.bots.length === 0) {
@@ -530,7 +592,7 @@ AUTO_PILOT_HTML = """
         async function actionBot(act, filename) {
             showToast(`${act.toUpperCase()}ING...`);
             try {
-                const res = await fetch(`/${act}/${encodeURIComponent(filename)}?key=${KEY}`, { method: 'POST' });
+                const res = await fetch(`/${act}/${encodeURIComponent(filename)}`, { method: 'POST' });
                 const data = await res.json();
                 if(data.error) showToast('ERR: ' + data.error);
                 else {
@@ -545,7 +607,7 @@ AUTO_PILOT_HTML = """
             editingFile = filename;
             document.getElementById('editorFileName').innerText = 'EDIT: ' + filename;
             try {
-                const res = await fetch(`/get_code/${filename}?key=${KEY}`);
+                const res = await fetch(`/get_code/${filename}`);
                 const data = await res.json();
                 if(data.error) { showToast('ERR: ' + data.error); return; }
                 document.getElementById('codeTextarea').value = data.code;
@@ -563,7 +625,7 @@ AUTO_PILOT_HTML = """
             const newCode = document.getElementById('codeTextarea').value;
             showToast('SAVING...');
             try {
-                const res = await fetch(`/save_code/${editingFile}?key=${KEY}`, {
+                const res = await fetch(`/save_code/${editingFile}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ code: newCode })
@@ -614,7 +676,7 @@ AUTO_PILOT_HTML = """
         async function fetchLog() {
             if(!activeLogFile || isMinimized) return;
             try {
-                const res = await fetch(`/get_log/${activeLogFile}?key=${KEY}`);
+                const res = await fetch(`/get_log/${activeLogFile}`);
                 const data = await res.json();
                 const term = document.getElementById('terminalOutput');
                 term.innerText = data.log || 'No logs...';
@@ -627,6 +689,68 @@ AUTO_PILOT_HTML = """
         setInterval(loadInstances, 10000);
         setInterval(updateSystemStats, 6000);
     </script>
+</body>
+</html>
+"""
+
+LOGIN_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEXUS-X // LOGIN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #050814;
+            --card-bg: #0b1329;
+            --neon-cyan: #00f3ff;
+            --neon-purple: #b000ff;
+            --text-main: #ffffff;
+            --text-muted: #8a99ad;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background: var(--bg-deep); color: var(--text-main); 
+            font-family: 'Inter', sans-serif; display: flex; 
+            align-items: center; justify-content: center; min-height: 100vh; padding: 16px;
+        }
+        .login-card {
+            background: var(--card-bg); width: 100%; max-width: 360px;
+            padding: 24px; border-radius: 16px; border: 1px solid rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
+        }
+        .title { font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 900; color: var(--neon-cyan); margin-bottom: 6px; text-align: center; }
+        .subtitle { font-size: 9px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 20px; text-align: center; }
+        .input-group { margin-bottom: 16px; }
+        .input-field {
+            width: 100%; background: #02050e; border: 1px solid rgba(0, 243, 255, 0.3);
+            padding: 12px; border-radius: 8px; color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none;
+        }
+        .btn { 
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+            color: #050814; border: none; padding: 14px; width: 100%; 
+            font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; 
+            border-radius: 8px; cursor: pointer; letter-spacing: 1px;
+        }
+        .error { color: #ff3366; font-size: 9px; font-family: 'JetBrains Mono', monospace; text-align: center; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="title">NEXUS-X SECURE</div>
+        <div class="subtitle">ENTER PASSWORD TO ACCESS DASHBOARD</div>
+        <form method="POST">
+            <div class="input-group">
+                <input type="password" name="password" class="input-field" placeholder="Enter Password..." required>
+            </div>
+            <button type="submit" class="btn">AUTHENTICATE</button>
+            {% if error %}
+            <div class="error">{{ error }}</div>
+            {% endif %}
+        </form>
+    </div>
 </body>
 </html>
 """
@@ -735,13 +859,29 @@ def monitor_bots():
 
 threading.Thread(target=monitor_bots, daemon=True).start()
 
-@app.route('/')
-def index(): 
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == DEFAULT_PASSWORD:
+            session['authenticated'] = True
+            return redirect(url_for('index'))
+        else:
+            return render_template_string(LOGIN_HTML, error='Invalid Password!')
+    
+    if not session.get('authenticated'):
+        return render_template_string(LOGIN_HTML, error=None)
+        
     return render_template_string(AUTO_PILOT_HTML)
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.pop('authenticated', None)
+    return jsonify({'success': True})
 
 @app.route('/system_stats', methods=['GET'])
 def system_stats():
-    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    if not session.get('authenticated'): return jsonify({'error': 'Unauthorized'}), 403
     
     global current_cpu
     cpu_percent = current_cpu
@@ -797,9 +937,8 @@ def system_stats():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    if not session.get('authenticated'): return jsonify({'error': 'Unauthorized'}), 403
     try:
-        if request.form.get('license_key') != DEFAULT_KEY:
-            return jsonify({'error': 'Unauthorized'}), 403
         if 'file' not in request.files:
             return jsonify({'error': 'No file part'}), 400
         file = request.files['file']
@@ -821,7 +960,7 @@ def upload_file():
 
 @app.route('/get_code/<filename>', methods=['GET'])
 def get_code(filename):
-    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    if not session.get('authenticated'): return jsonify({'error': 'Unauthorized'}), 403
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     if not os.path.exists(filepath): return jsonify({'error': 'File not found'}), 404
     try:
@@ -833,7 +972,7 @@ def get_code(filename):
 
 @app.route('/save_code/<filename>', methods=['POST'])
 def save_code(filename):
-    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    if not session.get('authenticated'): return jsonify({'error': 'Unauthorized'}), 403
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     if not os.path.exists(filepath): return jsonify({'error': 'File not found'}), 404
     try:
@@ -847,7 +986,7 @@ def save_code(filename):
 
 @app.route('/list', methods=['GET'])
 def list_bots():
-    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    if not session.get('authenticated'): return jsonify({'error': 'Unauthorized'}), 403
     files = os.listdir(UPLOAD_FOLDER) if os.path.exists(UPLOAD_FOLDER) else []
     bots = []
     dead_keys = []
@@ -876,7 +1015,7 @@ def list_bots():
 
 @app.route('/start/<filename>', methods=['POST'])
 def start_bot(filename):
-    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    if not session.get('authenticated'): return jsonify({'error': 'Unauthorized'}), 403
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     if not os.path.exists(filepath): return jsonify({'error': 'File not found'}), 404
     
@@ -896,7 +1035,7 @@ def start_bot(filename):
 
 @app.route('/get_log/<filename>', methods=['GET'])
 def get_log(filename):
-    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    if not session.get('authenticated'): return jsonify({'error': 'Unauthorized'}), 403
     log_path = os.path.join(UPLOAD_FOLDER, filename + '.log')
     if os.path.exists(log_path):
         try:
@@ -912,7 +1051,7 @@ def get_log(filename):
 
 @app.route('/stop/<filename>', methods=['POST'])
 def stop_bot(filename):
-    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    if not session.get('authenticated'): return jsonify({'error': 'Unauthorized'}), 403
     desired_states[filename] = False
     if filename in active_processes:
         try:
@@ -929,8 +1068,7 @@ def stop_bot(filename):
 
 @app.route('/delete/<filename>', methods=['POST'])
 def delete_bot(filename):
-    if request.args.get('key') != DEFAULT_KEY: 
-        return jsonify({'error': 'Unauthorized'}), 403
+    if not session.get('authenticated'): return jsonify({'error': 'Unauthorized'}), 403
     desired_states.pop(filename, None)
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     if filename in active_processes:
