@@ -42,7 +42,7 @@ def universal_auto_install(script_path):
         with open(script_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
         
-        # Clean regex to find all imported packages
+        # Sob import line dhore package ber korar regex
         imports = re.findall(r'^(?:import|from)\s+([a-zA-Z0-9_]+)', content, re.MULTILINE)
         
         stdlib_modules = {
@@ -67,6 +67,8 @@ def universal_auto_install(script_path):
                     pkg_name = 'dnspython'
                 elif imp == 'dotenv':
                     pkg_name = 'python-dotenv'
+                elif imp == 'phonenumbers':
+                    pkg_name = 'phonenumbers'
                 
                 packages_to_install.add(pkg_name)
         
@@ -75,6 +77,8 @@ def universal_auto_install(script_path):
             packages_to_install.add('pydantic')
         if 'telethon' in content.lower():
             packages_to_install.add('pysocks')
+        if 'phonenumbers' in content.lower():
+            packages_to_install.add('phonenumbers')
 
         for lib in packages_to_install:
             print(f"📦 [UNIVERSAL PIP] Installing package: {lib}...")
