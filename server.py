@@ -1,8 +1,13 @@
 import os
 import sys
 
-# Force release ports to avoid Address already in use error
-os.system("fuser -k 5050/tcp 2>/dev/null")
+# Dynamic Port setup for Render and Local/Termux
+PORT = int(os.environ.get("PORT", 5050))
+
+try:
+    os.system(f"fuser -k {PORT}/tcp 2>/dev/null")
+except:
+    pass
 
 import subprocess
 import threading
@@ -1026,8 +1031,8 @@ def get_local_ip():
 if __name__ == '__main__':
     local_ip = get_local_ip()
     print("\n" + "="*50)
-    print("🚀 NEXUS-X AUTH & AUTO-PIP IDE RUNNING (PORT 5050)")
-    print(f"👉 Local URL: http://127.0.0.1:5050")
-    print(f"👉 Network IP: http://{local_ip}:5050")
+    print(f"🚀 NEXUS-X AUTH & AUTO-PIP IDE RUNNING (PORT {PORT})")
+    print(f"👉 Local URL: http://127.0.0.1:{PORT}")
+    print(f"👉 Network IP: http://{local_ip}:{PORT}")
     print("="*50 + "\n")
-    serve(app, host='0.0.0.0', port=5050, threads=8)
+    serve(app, host='0.0.0.0', port=PORT, threads=8)
