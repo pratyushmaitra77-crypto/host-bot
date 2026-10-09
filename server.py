@@ -430,13 +430,13 @@ AUTO_PILOT_HTML = """
         .empty { color: var(--text-muted); font-size: 11px; text-align: center; padding: 20px; font-family: 'JetBrains Mono', monospace; }
         
         #toast { 
-            position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(100px); 
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-50px); 
             background: #0e1938; color: var(--neon-cyan); padding: 10px 20px; 
             font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; border-radius: 20px; 
             border: 1px solid rgba(0, 243, 255, 0.4);
-            transition: transform 0.2s ease; z-index: 101;
+            opacity: 0; transition: all 0.3s ease; z-index: 101; pointer-events: none;
         }
-        #toast.show { transform: translateX(-50%) translateY(0); }
+        #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     </style>
 </head>
 <body>
@@ -458,7 +458,7 @@ AUTO_PILOT_HTML = """
             function showToast(msg) {
                 const t = document.getElementById('toast');
                 t.innerText = msg; t.classList.add('show');
-                setTimeout(() => t.classList.remove('show'), 2000);
+                setTimeout(() => t.classList.remove('show'), 2500);
             }
             function switchAuthTab(mode) {
                 document.getElementById('tabLogin').classList.toggle('active', mode === 'login');
@@ -611,8 +611,11 @@ AUTO_PILOT_HTML = """
 
         function showToast(msg) {
             const t = document.getElementById('toast');
-            t.innerText = msg; t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 2000);
+            t.innerText = msg; 
+            t.classList.add('show');
+            setTimeout(() => {
+                t.classList.remove('show');
+            }, 2500);
         }
 
         async function updateSystemStats() {
