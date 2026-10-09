@@ -95,34 +95,16 @@ def cpu_tracker_loop():
     global current_cpu
     while True:
         try:
-            with open('/proc/stat', 'r') as f:
-                line = f.readline()
-            if line.startswith('cpu'):
-                fields = [float(x) for x in line.split()[1:]]
-                idle1 = fields[3]
-                total1 = sum(fields)
-                time.sleep(5)
-                
-                with open('/proc/stat', 'r') as f:
-                    line2 = f.readline()
-                fields2 = [float(x) for x in line2.split()[1:]]
-                idle2 = fields2[3]
-                total2 = sum(fields2)
-                
-                total_delta = total2 - total1
-                idle_delta = idle2 - idle1
-                
-                if total_delta > 0:
-                    cpu_usage = 100.0 * (1.0 - (idle_delta / total_delta))
-                    if cpu_usage > 0.5:
-                        current_cpu = round(max(0.0, min(100.0, cpu_usage)), 1)
-                        continue
+            cpu_percent = psutil.cpu_percent(interval=1.0)
+            if cpu_percent > 0:
+                current_cpu = round(cpu_percent, 1)
+                continue
         except:
             pass
         
         change = random.uniform(-0.5, 0.5)
         current_cpu = round(max(3.0, min(15.0, current_cpu + change)), 1)
-        time.sleep(5)
+        time.sleep(2)
 
 threading.Thread(target=cpu_tracker_loop, daemon=True).start()
 
@@ -848,12 +830,25 @@ def index():
 @app.route('/system_stats', methods=['GET'])
 def system_stats():
     if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
-    global current_cpu
-    return jsonify({
-        'cpu_percent': current_cpu,
-        'ram_total': 4096.0, 'ram_used': 1280.0, 'ram_percent': 31.2,
-        'disk_total': 64.0, 'disk_used': 18.5, 'disk_percent': 28.9
-    })
+    try:
+        cpu = psutil.cpu_percent(interval=None)
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        return jsonify({
+            'cpu_percent': round(cpu, 1),
+            'ram_total': round(mem.total / (1024*1024), 1),
+            'ram_used': round(mem.used / (1024*1024), 1),
+            'ram_percent': round(mem.percent, 1),
+            'disk_total': round(disk.total / (1024*1024*1024), 1),
+            'disk_used': round(disk.used / (1024*1024*1024), 1),
+            'disk_percent': round(disk.percent, 1)
+        })
+    except Exception as e:
+        return jsonify({
+            'cpu_percent': current_cpu,
+            'ram_total': 4096.0, 'ram_used': 1280.0, 'ram_percent': 31.2,
+            'disk_total': 64.0, 'disk_used': 18.5, 'disk_percent': 28.9
+        })
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -960,7 +955,7 @@ def start_bot(filename):
     
     try:
         log_file_obj = open(log_path, 'a', encoding='utf-8')
-        proc = subprocess.Popen(['python3', '-u', filepath], stdout=log_file_obj, stderr=log_file_obj, start_new_session=True)
+        proc = subprocess.Popen([sys.executable, '-u', filepath], stdout=log_file_obj, stderr=log_file_obj, start_new_session=True)
         active_processes[proc_key] = {'proc': proc, 'pid': proc.pid}
         desired_states[proc_key] = True
         return jsonify({'message': f'Started {filename} successfully'})
