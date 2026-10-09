@@ -1054,7 +1054,7 @@ def delete_bot(filename):
     if proc_key in active_processes:
         try:
             pid = active_processes[proc_key].get('pid')
-            if pid and psutil.pid_exists(pid): psutil.Process(proc_key).terminate()
+            if pid and psutil.pid_exists(pid): psutil.Process(pid).terminate()
         except:
             pass
         active_processes.pop(proc_key, None)
@@ -1101,7 +1101,7 @@ def get_local_ip():
 if __name__ == '__main__':
     local_ip = get_local_ip()
     print("\n" + "="*40)
-    print("🚀 SERVER STARTED WITH POLICY & SUPPORT MODALS IN PROFILE!")
+    print("🚀 NEXUS-X v6 CLOUD IDE STARTED SUCCESSFULLY!")
     print(f"👉 Local URL: http://127.0.0.1:5000")
     print(f"👉 Network IP: http://{local_ip}:5000")
     print("="*40 + "\n")
