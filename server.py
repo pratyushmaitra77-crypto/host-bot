@@ -1,4 +1,4 @@
-import os, subprocess, psutil, re, threading, socket, time, random
+import os, sys, subprocess, psutil, re, threading, socket, time, random
 from flask import Flask, jsonify, render_template_string, request
 from waitress import serve
 from werkzeug.utils import secure_filename
@@ -273,6 +273,7 @@ AUTO_PILOT_HTML = """
         .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; }
         .b-edit { background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
         .b-log { background: rgba(176, 0, 255, 0.15); color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.35); }
+        .b-upload { background: rgba(0, 243, 255, 0.15); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.35); }
         
         .terminal-box { 
             background: #02050e; border: 1px solid rgba(0, 243, 255, 0.35); 
@@ -377,7 +378,7 @@ AUTO_PILOT_HTML = """
         <div class="card">
             <div class="card-title"><span>⚡ DEPLOY ENGINE CORE</span></div>
             <div class="file-upload-wrapper">
-                <input type="file" id="botFile" accept=".py">
+                <input type="file" id="botFile" accept=".py,.txt">
             </div>
             <button class="btn" onclick="deployBot()">UPLOAD & COMPILE SCRIPT</button>
         </div>
@@ -401,6 +402,9 @@ AUTO_PILOT_HTML = """
             <div id="terminalOutput" class="terminal-box">Waiting for stream...</div>
         </div>
     </div>
+
+    <!-- Hidden file input for instance card upload -->
+    <input type="file" id="instanceFileInput" style="display:none;" accept=".py,.txt" onchange="uploadExtraFile(this)">
 
     <div id="editorModal">
         <div class="editor-content">
@@ -445,7 +449,7 @@ AUTO_PILOT_HTML = """
 
         async function deployBot() {
             const fileInput = document.getElementById('botFile');
-            if(!fileInput.files[0]) { showToast('ERR: SELECT A .PY FILE'); return; }
+            if(!fileInput.files[0]) { showToast('ERR: SELECT A FILE (.PY OR .TXT)'); return; }
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('license_key', KEY);
@@ -460,6 +464,29 @@ AUTO_PILOT_HTML = """
                     if(data.filename) openTerminal(data.filename);
                 }
             } catch(e) { showToast('UPLOAD FAILED'); }
+        }
+
+        function triggerInstanceUpload() {
+            document.getElementById('instanceFileInput').click();
+        }
+
+        async function uploadExtraFile(input) {
+            if(!input.files[0]) return;
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            formData.append('license_key', KEY);
+            showToast('UPLOADING FILE...');
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(data.error) showToast('ERR: ' + data.error);
+                else {
+                    showToast(data.message);
+                    loadInstances();
+                    if(data.filename) openTerminal(data.filename);
+                }
+            } catch(e) { showToast('UPLOAD FAILED'); }
+            input.value = '';
         }
 
         async function loadInstances() {
@@ -491,6 +518,7 @@ AUTO_PILOT_HTML = """
                                 <div class="secondary-actions" style="margin-top:6px;">
                                     <button class="sec-btn b-edit" onclick="openEditor('${b.name}')">📝 EDIT</button>
                                     <button class="sec-btn b-log" onclick="openTerminal('${b.name}')">🖥️ LOGS</button>
+                                    <button class="sec-btn b-upload" onclick="triggerInstanceUpload()">📤 UPLOAD</button>
                                 </div>
                             </div>
                         `;
@@ -606,7 +634,12 @@ AUTO_PILOT_HTML = """
 def extract_imports(filepath):
     imports = set()
     std_libs = {'os', 'sys', 'time', 'json', 'math', 'random', 're', 'datetime', 'subprocess', 'shutil', 'logging', 'pathlib', 'urllib', 'http', 'asyncio', 'threading', 'queue', 'collections', 'itertools', 'functools', 'io', 'hashlib', 'base64', 'traceback'}
-    pkg_map = {'PIL': 'pillow', 'cv2': 'opencv-python', 'telegram': 'python-telegram-bot'}
+    pkg_map = {
+        'PIL': 'pillow', 
+        'cv2': 'opencv-python', 
+        'telegram': 'python-telegram-bot',
+        'phonenumbers': 'phonenumbers'
+    }
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             for line in f:
@@ -628,7 +661,7 @@ def background_setup(filepath, filename):
             log_f.write(f"-> Checking module: {lib}...\n")
             log_f.flush()
             try:
-                check_res = subprocess.run(['python3', '-c', f"import {lib.replace('-', '_')}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                check_res = subprocess.run([sys.executable, '-c', f"import {lib.replace('-', '_')}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if check_res.returncode == 0:
                     log_f.write(f"   [OK] {lib} already installed.\n")
                 else:
@@ -636,7 +669,7 @@ def background_setup(filepath, filename):
             except:
                 log_f.write(f"   [INSTALLING] {lib} missing. Installing via pip...\n")
                 log_f.flush()
-                res = subprocess.run(['pip', 'install', '--prefer-binary', lib], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                res = subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-cache-dir', '--prefer-binary', lib], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                 log_f.write(res.stdout)
                 if res.returncode == 0:
                     log_f.write(f"   [SUCCESS] Installed {lib}!\n")
@@ -645,6 +678,18 @@ def background_setup(filepath, filename):
             log_f.flush()
         log_f.write("=== [READY] Configuration complete. Press START! ===\n")
 
+def install_requirements_file(filepath, filename):
+    log_path = filepath + '.log'
+    with open(log_path, 'w', encoding='utf-8') as log_f:
+        log_f.write(f"=== [REQUIREMENTS] Installing packages from {filename} ===\n")
+        log_f.flush()
+        res = subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-cache-dir', '--prefer-binary', '-r', filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        log_f.write(res.stdout)
+        if res.returncode == 0:
+            log_f.write("\n=== [SUCCESS] All requirements installed successfully! ===\n")
+        else:
+            log_f.write("\n=== [FAILED] Error installing requirements ===\n")
+
 def start_bot_process(filename):
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     log_path = filepath + '.log'
@@ -652,7 +697,7 @@ def start_bot_process(filename):
         with open(log_path, 'a', encoding='utf-8') as log_file:
             log_file.write("\n\n=== [STARTED] Instance running... ===\n")
         log_file_obj = open(log_path, 'a', encoding='utf-8')
-        proc = subprocess.Popen(['python3', '-u', filepath], stdout=log_file_obj, stderr=log_file_obj, start_new_session=True)
+        proc = subprocess.Popen([sys.executable, '-u', filepath], stdout=log_file_obj, stderr=log_file_obj, start_new_session=True)
         active_processes[filename] = {'proc': proc, 'pid': proc.pid}
         desired_states[filename] = True
         return True
@@ -761,12 +806,14 @@ def upload_file():
         if file.filename == '':
             return jsonify({'error': 'No selected file'}), 400
         filename = secure_filename(file.filename)
-        if not filename.endswith('.py'):
-            filename += '.py'
+        
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
         
-        threading.Thread(target=background_setup, args=(filepath, filename), daemon=True).start()
+        if filename.endswith('.py'):
+            threading.Thread(target=background_setup, args=(filepath, filename), daemon=True).start()
+        elif 'requirements' in filename.lower() and filename.endswith('.txt'):
+            threading.Thread(target=install_requirements_file, args=(filepath, filename), daemon=True).start()
         
         return jsonify({'message': f'Uploaded {filename}!', 'filename': filename})
     except Exception as e:
