@@ -154,10 +154,21 @@ PANEL_HTML = """
         .card { background: var(--card-bg); padding: 16px; margin-bottom: 16px; border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.15); }
         .card-title { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 700; margin-bottom: 12px; color: var(--neon-cyan); text-transform: uppercase; }
         input[type="file"] { width: 100%; padding: 10px; background: #050814; border: 1px dashed rgba(0,243,255,0.4); border-radius: 8px; color: var(--text-main); margin-bottom: 12px; font-size: 12px; }
-        .btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #050814; border: none; padding: 12px; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; border-radius: 8px; cursor: pointer; text-transform: uppercase; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        .btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #050814; border: none; padding: 12px; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; border-radius: 8px; cursor: pointer; text-transform: uppercase; }
         
-        .spinner { width: 14px; height: 14px; border: 2px solid #050814; border-top: 2px solid #ffffff; border-radius: 50%; animation: spin 0.8s linear infinite; display: none; }
+        /* Full Screen Loading Overlay & Spinner (Chorka Ghura Animation) */
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 8, 20, 0.85); display: none;
+            flex-direction: column; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 4px solid rgba(0, 243, 255, 0.1);
+            border-top: 4px solid var(--neon-cyan); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin-bottom: 15px;
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #loading-overlay p { font-family: 'Orbitron', sans-serif; font-size: 12px; color: var(--neon-cyan); letter-spacing: 1px; }
 
         .bot-item { background: rgba(5, 8, 20, 0.6); padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--success); }
         .bot-info h4 { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-main); }
@@ -168,6 +179,12 @@ PANEL_HTML = """
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <p>DEPLOYING PROJECT TO CLOUD...</p>
+    </div>
+
     <div class="container">
         <div class="header">
             <div>
@@ -181,10 +198,7 @@ PANEL_HTML = """
             <div class="card-title">Upload & Run Bot</div>
             <form action="/upload" method="POST" enctype="multipart/form-data" onsubmit="showLoader()">
                 <input type="file" name="bot_file" required>
-                <button type="submit" class="btn" id="subBtn">
-                    <span id="btnText">🚀 Upload & Run</span>
-                    <div class="spinner" id="loadingSpinner"></div>
-                </button>
+                <button type="submit" class="btn">🚀 Upload & Run</button>
             </form>
         </div>
 
@@ -211,8 +225,7 @@ PANEL_HTML = """
 
     <script>
         function showLoader() {
-            document.getElementById('btnText').innerText = "Deploying...";
-            document.getElementById('loadingSpinner').style.display = "inline-block";
+            document.getElementById('loading-overlay').style.display = 'flex';
         }
     </script>
 </body>
@@ -333,5 +346,4 @@ def delete_bot(bot_id):
 
 if __name__ == '__main__':
     import string
-    # Hugging Face ba Render-er jonno port 7860 use kora hoyeche
     serve(app, host='0.0.0.0', port=7860)
