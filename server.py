@@ -1,4 +1,4 @@
-import os, sys, subprocess, threading, time, random, datetime, platform
+import os, sys, subprocess, threading, time, random, datetime, platform, string
 from flask import Flask, render_template_string, request, redirect, url_for, session
 from waitress import serve
 from werkzeug.utils import secure_filename
@@ -15,7 +15,6 @@ try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     db = client["nexus_panel_storage"]
     scripts_collection = db["saved_scripts"]
-    premium_collection = db["premium_users"]
     print("✅ Connected to MongoDB successfully!")
 except Exception as e:
     print(f"❌ MongoDB Connection Error: {e}")
@@ -24,7 +23,7 @@ UPLOAD_FOLDER = os.path.join(os.getcwd(), 'hosted_bots')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 active_processes = {}
-ADMIN_PASSWORD = "admin123"
+ADMIN_PASSWORD = "admin123"  # প্যানেল লগইন পাসওয়ার্ড
 
 def kill_process_by_pid(pid):
     try:
@@ -91,7 +90,7 @@ def restore_and_launch_bots():
 restore_and_launch_bots()
 
 # ═══════════════════════════════════════
-#          HTML TEMPLATES
+#          HTML TEMPLATES (WITH ANIMATION)
 # ═══════════════════════════════════════
 LOGIN_HTML = """
 <!DOCTYPE html>
@@ -156,10 +155,10 @@ PANEL_HTML = """
         input[type="file"] { width: 100%; padding: 10px; background: #050814; border: 1px dashed rgba(0,243,255,0.4); border-radius: 8px; color: var(--text-main); margin-bottom: 12px; font-size: 12px; }
         .btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #050814; border: none; padding: 12px; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; border-radius: 8px; cursor: pointer; text-transform: uppercase; }
         
-        /* Full Screen Loading Overlay & Spinner (Chorka Ghura Animation) */
+        /* Loading Overlay & Spinner (Chorka Ghura Animation) */
         #loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 8, 20, 0.85); display: none;
+            background: rgba(5, 8, 20, 0.88); display: none;
             flex-direction: column; justify-content: center; align-items: center; z-index: 9999;
         }
         .spinner {
@@ -179,10 +178,10 @@ PANEL_HTML = """
     </style>
 </head>
 <body>
-    <!-- Loading Overlay -->
+    <!-- Loading Animation Overlay -->
     <div id="loading-overlay">
         <div class="spinner"></div>
-        <p>DEPLOYING PROJECT TO CLOUD...</p>
+        <p>DEPLOYING BOT & STARTING PROCESS...</p>
     </div>
 
     <div class="container">
@@ -345,5 +344,4 @@ def delete_bot(bot_id):
     return redirect(url_for('home'))
 
 if __name__ == '__main__':
-    import string
     serve(app, host='0.0.0.0', port=7860)
