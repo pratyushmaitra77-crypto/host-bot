@@ -1,5 +1,5 @@
-import os, sys, subprocess, threading, time, random, datetime, zipfile, platform
-from flask import Flask, jsonify, render_template_string, request, session, redirect, url_for
+import os, sys, subprocess, threading, time, random, datetime, platform
+from flask import Flask, render_template_string, request, redirect, url_for
 from waitress import serve
 from werkzeug.utils import secure_filename
 from pymongo import MongoClient
@@ -29,10 +29,10 @@ def kill_process_by_pid(pid):
         if platform.system() == "Windows":
             subprocess.call(['taskkill', '/F', '/T', '/PID', str(pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
-            os.killpg(os.getpgid(pid), signal.SIGKILL)
+            os.killpg(os.getpgid(pid), 9)
     except Exception:
         try:
-            os.kill(pid, signal.SIGKILL)
+            os.kill(pid, 9)
         except Exception:
             pass
 
@@ -210,7 +210,7 @@ def upload_file():
         try:
             process = subprocess.Popen(
                 cmd,
-                stdout=log_log := log_file,
+                stdout=log_file,
                 stderr=log_file,
                 start_new_session=True if platform.system() != "Windows" else False
             )
