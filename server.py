@@ -244,7 +244,7 @@ AUTO_PILOT_HTML = """
         .actions { display: flex; gap: 6px; margin-bottom: 6px; }
         .act-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; transition: all 0.2s ease; }
         
-        /* Glowing Neon Interactive Buttons */
+        /* Exact Screenshot Matching Button Colors with Glowing Click Effect */
         .b-start { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.8); box-shadow: 0 0 10px rgba(0,243,255,0.2); }
         .b-start:active { transform: scale(0.94); box-shadow: 0 0 25px var(--neon-cyan); background: rgba(0,243,255,0.25); color: #fff; }
 
@@ -764,7 +764,7 @@ def stop_bot(filename):
     log_path = os.path.join(UPLOAD_FOLDER, filename + '.log')
     if os.path.exists(log_path):
         with open(log_path, 'a', encoding='utf-8') as lf:
-            lf.write("\n=== [STOPPED] Terminated by user. ===\n")
+            lf.write("\n=== [STOPPED] Terminated by user. ===[span_2](start_span)[span_2](end_span)[span_3](start_span)[span_3](end_span)\n")
     return jsonify({'message': f'Stopped {filename}'})
 
 @app.route('/delete/<filename>', methods=['POST'])
