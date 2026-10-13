@@ -637,7 +637,15 @@ AUTO_PILOT_HTML = """
 def extract_imports(filepath):
     imports = set()
     std_libs = {'os', 'sys', 'time', 'json', 'math', 'random', 're', 'datetime', 'subprocess', 'shutil', 'logging', 'pathlib', 'urllib', 'http', 'asyncio', 'threading', 'queue', 'collections', 'itertools', 'functools', 'io', 'hashlib', 'base64', 'traceback'}
-    pkg_map = {'PIL': 'pillow', 'cv2': 'opencv-python', 'telegram': 'python-telegram-bot', 'telebot': 'pyTelegramBotAPI'}
+    pkg_map = {
+        'PIL': 'pillow', 
+        'cv2': 'opencv-python', 
+        'telegram': 'python-telegram-bot', 
+        'telebot': 'pyTelegramBotAPI',
+        'pymongo': 'pymongo',
+        'motor': 'motor',
+        'dns': 'dnspython'
+    }
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             for line in f:
