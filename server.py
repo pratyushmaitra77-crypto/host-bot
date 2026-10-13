@@ -53,6 +53,9 @@ def restore_and_launch_bots():
                     with open(file_path, "w", encoding="utf-8") as f:
                         f.write(code)
                     
+                    log_path = os.path.join(UPLOAD_FOLDER, f"log_{bot_id}.txt")
+                    log_file = open(log_path, "w")
+
                     if filename.endswith(".py"):
                         cmd = [sys.executable, file_path]
                     elif filename.endswith(".js"):
@@ -65,14 +68,15 @@ def restore_and_launch_bots():
                     try:
                         process = subprocess.Popen(
                             cmd,
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL,
+                            stdout=log_file,
+                            stderr=log_file,
                             start_new_session=True if platform.system() != "Windows" else False
                         )
                         active_processes[bot_id] = {
                             "pid": process.pid,
                             "filename": filename,
                             "file_path": file_path,
+                            "log_path": log_path,
                             "time": time.strftime("%Y-%m-%d %H:%M:%S")
                         }
                         count += 1
@@ -119,7 +123,9 @@ PANEL_HTML = """
         .bot-item { background: rgba(5, 8, 20, 0.6); padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--success); }
         .bot-info h4 { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-main); }
         .bot-info p { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
-        .btn-del { background: var(--danger); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 10px; font-family: 'Orbitron', sans-serif; cursor: pointer; text-decoration: none; }
+        .actions { display: flex; gap: 6px; }
+        .btn-del { background: var(--danger); color: #fff; border: none; padding: 6px 10px; border-radius: 6px; font-size: 10px; font-family: 'Orbitron', sans-serif; cursor: pointer; text-decoration: none; }
+        .btn-log { background: #333; color: var(--neon-cyan); border: 1px solid var(--neon-cyan); padding: 6px 10px; border-radius: 6px; font-size: 10px; font-family: 'Orbitron', sans-serif; cursor: pointer; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -146,7 +152,10 @@ PANEL_HTML = """
                         <h4>{{ info.filename }}</h4>
                         <p>ID: {{ bid }} | Started: {{ info.time }}</p>
                     </div>
-                    <a href="/delete/{{ bid }}" class="btn-del">Stop</a>
+                    <div class="actions">
+                        <a href="/logs/{{ bid }}" target="_blank" class="btn-log">Logs</a>
+                        <a href="/delete/{{ bid }}" class="btn-del">Stop</a>
+                    </div>
                 </div>
                 {% endfor %}
             {% else %}
@@ -186,6 +195,9 @@ def upload_file():
             upsert=True
         )
         
+        log_path = os.path.join(UPLOAD_FOLDER, f"log_{bot_id}.txt")
+        log_file = open(log_path, "w")
+
         if filename.endswith(".py"):
             cmd = [sys.executable, file_path]
         elif filename.endswith(".js"):
@@ -198,20 +210,31 @@ def upload_file():
         try:
             process = subprocess.Popen(
                 cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stdout=log_log := log_file,
+                stderr=log_file,
                 start_new_session=True if platform.system() != "Windows" else False
             )
             active_processes[bot_id] = {
                 "pid": process.pid,
                 "filename": filename,
                 "file_path": file_path,
+                "log_path": log_path,
                 "time": time.strftime("%Y-%m-%d %H:%M:%S")
             }
         except Exception as e:
             print(f"Run error: {e}")
             
     return redirect(url_for('home'))
+
+@app.route('/logs/<bot_id>')
+def view_logs(bot_id):
+    if bot_id in active_processes:
+        log_path = active_processes[bot_id]["log_path"]
+        if os.path.exists(log_path):
+            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+                logs = f.read()
+            return f"<pre style='background:#050814;color:#00f3ff;padding:16px;'>{logs}</pre>"
+    return "No logs found or bot stopped."
 
 @app.route('/delete/<bot_id>')
 def delete_bot(bot_id):
