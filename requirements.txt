@@ -1,3 +1,5 @@
-Flask
+flask
 waitress
+psutil
 pymongo
+werkzeug
