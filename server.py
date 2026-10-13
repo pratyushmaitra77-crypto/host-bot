@@ -211,10 +211,22 @@ AUTO_PILOT_HTML = """
         .b-stop { background: rgba(251, 191, 36, 0.15); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.4); }
         .b-del { background: rgba(255, 0, 85, 0.15); color: var(--danger); border: 1px solid rgba(255, 0, 85, 0.4); }
         
-        .secondary-actions { display: flex; gap: 6px; }
+        .secondary-actions { display: flex; gap: 6px; margin-bottom: 6px; }
         .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; }
         .b-edit { background: rgba(0, 243, 255, 0.15); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
         .b-log { background: rgba(176, 0, 255, 0.2); color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.4); }
+
+        .req-upload-box {
+            background: rgba(0, 243, 255, 0.05);
+            border: 1px dashed rgba(0, 243, 255, 0.3);
+            padding: 8px;
+            border-radius: 6px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .req-upload-box input { font-size: 9px; color: var(--text-muted); }
+        .req-btn { background: rgba(0, 243, 255, 0.2); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); padding: 6px 10px; font-size: 8px; font-weight: bold; border-radius: 4px; cursor: pointer; font-family: 'Orbitron'; }
 
         #editorModal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -280,10 +292,6 @@ AUTO_PILOT_HTML = """
                 <label style="font-size:9px; color:var(--neon-cyan); display:block; margin-bottom:5px;">📁 Python Script (.py):</label>
                 <input type="file" id="botFile" accept=".py">
             </div>
-            <div class="file-upload-wrapper">
-                <label style="font-size:9px; color:var(--neon-cyan); display:block; margin-bottom:5px;">📦 Requirements (requirements.txt):</label>
-                <input type="file" id="reqFile" accept=".txt">
-            </div>
             <button class="btn" onclick="deployBot()">🚀 Upload & Start Bot</button>
         </div>
         
@@ -332,14 +340,10 @@ AUTO_PILOT_HTML = """
 
         async function deployBot() {
             const fileInput = document.getElementById('botFile');
-            const reqInput = document.getElementById('reqFile');
             if(!fileInput.files[0]) { showToast('ERR: SELECT A .PY FILE'); return; }
             
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
-            if(reqInput.files[0]) {
-                formData.append('req_file', reqInput.files[0]);
-            }
             formData.append('license_key', KEY);
             
             showToast('UPLOADING...');
@@ -349,9 +353,31 @@ AUTO_PILOT_HTML = """
                 if(data.error) showToast('ERR: ' + data.error);
                 else {
                     showToast(data.message);
+                    fileInput.value = '';
                     loadInstances();
                 }
             } catch(e) { showToast('UPLOAD FAILED'); }
+        }
+
+        async function uploadRequirements(filename) {
+            const input = document.getElementById('req_' + filename);
+            if(!input.files[0]) { showToast('ERR: SELECT REQUIREMENTS.TXT'); return; }
+            
+            const formData = new FormData();
+            formData.append('req_file', input.files[0]);
+            formData.append('filename', filename);
+            formData.append('license_key', KEY);
+            
+            showToast('INSTALLING REQS...');
+            try {
+                const res = await fetch('/upload_req', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(data.error) showToast('ERR: ' + data.error);
+                else {
+                    showToast(data.message);
+                    input.value = '';
+                }
+            } catch(e) { showToast('INSTALL FAILED'); }
         }
 
         async function loadInstances() {
@@ -378,6 +404,10 @@ AUTO_PILOT_HTML = """
                                 <div class="secondary-actions" style="margin-top:6px;">
                                     <button class="sec-btn b-edit" onclick="openEditor('${b.name}')">📝 EDIT</button>
                                     <a href="/logs/${b.name}?key=${KEY}" target="_blank" style="flex:1; text-decoration:none;"><button class="sec-btn b-log" style="width:100%;">🖥️ LOGS</button></a>
+                                </div>
+                                <div class="req-upload-box">
+                                    <input type="file" id="req_${b.name}" accept=".txt">
+                                    <button class="req-btn" onclick="uploadRequirements('${b.name}')">📦 REQ INSTALL</button>
                                 </div>
                             </div>
                         `;
@@ -460,19 +490,11 @@ def extract_imports(filepath):
         pass
     return list(imports)
 
-def background_setup(filepath, filename, req_filepath=None):
+def background_setup(filepath, filename):
     log_path = filepath + '.log'
     with open(log_path, 'w', encoding='utf-8') as log_f:
         log_f.write(f"=== [SETUP] Initializing dependencies for {filename} ===\n")
         log_f.flush()
-        
-        if req_filepath and os.path.exists(req_filepath):
-            log_f.write("-> Installing requirements from uploaded requirements.txt...\n")
-            log_f.flush()
-            res = subprocess.run(['pip', 'install', '--prefer-binary', '-r', req_filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-            log_f.write(res.stdout)
-            log_f.flush()
-        
         libs = extract_imports(filepath)
         for lib in libs:
             log_f.write(f"-> Checking module: {lib}...\n")
@@ -508,37 +530,6 @@ def start_bot_process(filename):
         return True
     except Exception as e:
         return False
-
-def monitor_bots():
-    while True:
-        time.sleep(15)
-        for filename, should_run in list(desired_states.items()):
-            if should_run:
-                filepath = os.path.join(UPLOAD_FOLDER, filename)
-                if not os.path.exists(filepath):
-                    desired_states.pop(filename, None)
-                    active_processes.pop(filename, None)
-                    continue
-                
-                is_running = False
-                if filename in active_processes:
-                    pid = active_processes[filename].get('pid')
-                    if pid and psutil.pid_exists(pid):
-                        try:
-                            p = psutil.Process(pid)
-                            if p.is_running() and p.status() != psutil.STATUS_ZOMBIE:
-                                is_running = True
-                        except: 
-                            pass
-                
-                if not is_running:
-                    log_path = filepath + '.log'
-                    if os.path.exists(log_path):
-                        with open(log_path, 'a', encoding='utf-8') as lf:
-                            lf.write("\n=== [AUTO-RESTART] Crash detected! Restarting... ===\n")
-                    start_bot_process(filename)
-
-threading.Thread(target=monitor_bots, daemon=True).start()
 
 @app.route('/')
 def index(): 
@@ -597,18 +588,37 @@ def upload_file():
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
         
-        req_filepath = None
-        if 'req_file' in request.files:
-            req_file = request.files['req_file']
-            if req_file.filename != '':
-                req_filename = secure_filename(req_file.filename)
-                req_filepath = os.path.join(UPLOAD_FOLDER, req_filename)
-                req_file.save(req_filepath)
-        
-        threading.Thread(target=background_setup, args=(filepath, filename, req_filepath), daemon=True).start()
+        threading.Thread(target=background_setup, args=(filepath, filename), daemon=True).start()
         start_bot_process(filename)
         
         return jsonify({'message': f'Uploaded & Started {filename}!', 'filename': filename})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/upload_req', methods=['POST'])
+def upload_req():
+    try:
+        if request.form.get('license_key') != DEFAULT_KEY:
+            return jsonify({'error': 'Unauthorized'}), 403
+        filename = request.form.get('filename')
+        req_file = request.files.get('req_file')
+        if not req_file or req_file.filename == '':
+            return jsonify({'error': 'No requirements file'}), 400
+        
+        req_filename = secure_filename(req_file.filename)
+        req_filepath = os.path.join(UPLOAD_FOLDER, f"{filename}_{req_filename}")
+        req_file.save(req_filepath)
+        
+        log_path = os.path.join(UPLOAD_FOLDER, filename + '.log')
+        with open(log_path, 'a', encoding='utf-8') as log_f:
+            log_f.write("\n=== [REQ INSTALL] Installing requirements.txt... ===\n")
+            log_f.flush()
+            res = subprocess.run(['pip', 'install', '--prefer-binary', '-r', req_filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            log_f.write(res.stdout)
+            log_f.write("\n=== [REQ INSTALL] Done! ===\n")
+            log_f.flush()
+            
+        return jsonify({'message': 'Requirements installed successfully!'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
