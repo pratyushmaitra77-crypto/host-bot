@@ -196,7 +196,7 @@ AUTO_PILOT_HTML = """
 
         .instance-item { 
             background: #070e21; 
-            padding: 12px; margin-bottom: 10px; 
+            padding: 12px; margin-bottom: 12px; 
             border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.06);
         }
         .instance-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; font-weight: 600; color: #fff; font-family: 'JetBrains Mono', monospace; }
@@ -211,22 +211,11 @@ AUTO_PILOT_HTML = """
         .b-stop { background: rgba(251, 191, 36, 0.15); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.4); }
         .b-del { background: rgba(255, 0, 85, 0.15); color: var(--danger); border: 1px solid rgba(255, 0, 85, 0.4); }
         
-        .secondary-actions { display: flex; gap: 6px; margin-bottom: 6px; }
-        .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; }
+        .secondary-actions { display: flex; gap: 6px; }
+        .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; text-align: center; }
         .b-edit { background: rgba(0, 243, 255, 0.15); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
         .b-log { background: rgba(176, 0, 255, 0.2); color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.4); }
-
-        .req-upload-box {
-            background: rgba(0, 243, 255, 0.05);
-            border: 1px dashed rgba(0, 243, 255, 0.3);
-            padding: 8px;
-            border-radius: 6px;
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }
-        .req-upload-box input { font-size: 9px; color: var(--text-muted); }
-        .req-btn { background: rgba(0, 243, 255, 0.2); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); padding: 6px 10px; font-size: 8px; font-weight: bold; border-radius: 4px; cursor: pointer; font-family: 'Orbitron'; }
+        .b-upload { background: rgba(0, 243, 255, 0.15); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
 
         #editorModal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -287,22 +276,24 @@ AUTO_PILOT_HTML = """
         </div>
         
         <div class="card">
-            <div class="card-title"><span>⚡ DEPLOY BOT</span></div>
+            <div class="card-title"><span>⚡ DEPLOY ENGINE CORE</span></div>
             <div class="file-upload-wrapper">
-                <label style="font-size:9px; color:var(--neon-cyan); display:block; margin-bottom:5px;">📁 Python Script (.py):</label>
                 <input type="file" id="botFile" accept=".py">
             </div>
-            <button class="btn" onclick="deployBot()">🚀 Upload & Start Bot</button>
+            <button class="btn" onclick="deployBot()">UPLOAD & COMPILE SCRIPT</button>
         </div>
         
         <div class="card">
             <div class="card-title">
-                <span>📂 ACTIVE BOTS</span>
+                <span>📂 ACTIVE INSTANCES</span>
                 <button class="refresh-btn" onclick="loadInstances()">REFRESH</button>
             </div>
             <div id="instanceList" class="empty">No active bots uploaded.</div>
         </div>
     </div>
+
+    <!-- Hidden file input for uploading requirements to a specific bot -->
+    <input type="file" id="hiddenReqInput" accept=".txt" style="display:none;" onchange="handleReqFileSelected(event)">
 
     <div id="editorModal">
         <div class="editor-content">
@@ -319,6 +310,7 @@ AUTO_PILOT_HTML = """
     <script>
         const KEY = 'admin123';
         let editingFile = null;
+        let targetBotForReq = null;
 
         function showToast(msg) {
             const t = document.getElementById('toast');
@@ -359,25 +351,31 @@ AUTO_PILOT_HTML = """
             } catch(e) { showToast('UPLOAD FAILED'); }
         }
 
-        async function uploadRequirements(filename) {
-            const input = document.getElementById('req_' + filename);
-            if(!input.files[0]) { showToast('ERR: SELECT REQUIREMENTS.TXT'); return; }
-            
+        function triggerReqUpload(filename) {
+            targetBotForReq = filename;
+            document.getElementById('hiddenReqInput').click();
+        }
+
+        async function handleReqFileSelected(event) {
+            const file = event.target.files[0];
+            if(!file || !targetBotForReq) return;
+
             const formData = new FormData();
-            formData.append('req_file', input.files[0]);
-            formData.append('filename', filename);
+            formData.append('req_file', file);
+            formData.append('filename', targetBotForReq);
             formData.append('license_key', KEY);
-            
+
             showToast('INSTALLING REQS...');
             try {
                 const res = await fetch('/upload_req', { method: 'POST', body: formData });
                 const data = await res.json();
                 if(data.error) showToast('ERR: ' + data.error);
-                else {
-                    showToast(data.message);
-                    input.value = '';
-                }
-            } catch(e) { showToast('INSTALL FAILED'); }
+                else showToast(data.message);
+            } catch(e) {
+                showToast('INSTALL FAILED');
+            }
+            event.target.value = '';
+            targetBotForReq = null;
         }
 
         async function loadInstances() {
@@ -393,7 +391,7 @@ AUTO_PILOT_HTML = """
                         return `
                             <div class="instance-item">
                                 <div class="instance-top">
-                                    <span>🤖 ${b.name}</span>
+                                    <span>⚡ ${b.name}</span>
                                     <span class="${online ? 'st-on' : 'st-off'}">${b.status}</span>
                                 </div>
                                 <div class="actions">
@@ -401,13 +399,10 @@ AUTO_PILOT_HTML = """
                                     <button class="act-btn b-stop" onclick="actionBot('stop', '${b.name}')">STOP</button>
                                     <button class="act-btn b-del" onclick="actionBot('delete', '${b.name}')">DELETE</button>
                                 </div>
-                                <div class="secondary-actions" style="margin-top:6px;">
+                                <div class="secondary-actions">
                                     <button class="sec-btn b-edit" onclick="openEditor('${b.name}')">📝 EDIT</button>
                                     <a href="/logs/${b.name}?key=${KEY}" target="_blank" style="flex:1; text-decoration:none;"><button class="sec-btn b-log" style="width:100%;">🖥️ LOGS</button></a>
-                                </div>
-                                <div class="req-upload-box">
-                                    <input type="file" id="req_${b.name}" accept=".txt">
-                                    <button class="req-btn" onclick="uploadRequirements('${b.name}')">📦 REQ INSTALL</button>
+                                    <button class="sec-btn b-upload" onclick="triggerReqUpload('${b.name}')">📦 UPLOAD</button>
                                 </div>
                             </div>
                         `;
