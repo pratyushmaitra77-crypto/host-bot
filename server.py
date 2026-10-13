@@ -15,6 +15,7 @@ try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     db = client["nexus_panel_storage"]
     scripts_collection = db["saved_scripts"]
+    config_collection = db["panel_config"]
     print("✅ Connected to MongoDB successfully!")
 except Exception as e:
     print(f"❌ MongoDB Connection Error: {e}")
@@ -23,6 +24,27 @@ UPLOAD_FOLDER = os.path.join(os.getcwd(), 'hosted_bots')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 active_processes = {}
+
+# Default admin password management via DB or fallback
+def get_admin_password():
+    try:
+        cfg = config_collection.find_one({"key": "admin_pass"})
+        if cfg:
+            return cfg.get("password", "admin123")
+    except:
+        pass
+    return "admin123"
+
+def set_admin_password(new_pass):
+    try:
+        config_collection.update_one(
+            {"key": "admin_pass"},
+            {"$set": {"password": new_pass}},
+            upsert=True
+        )
+        return True
+    except:
+        return False
 
 def kill_process_by_pid(pid):
     try:
@@ -104,14 +126,13 @@ def system_monitor_loop():
             mem = psutil.virtual_memory()
             current_ram = round(mem.percent, 1)
             
-            # Calculate folder size for storage
             total_size = 0
             for dirpath, dirnames, filenames in os.walk(UPLOAD_FOLDER):
                 for f in filenames:
                     fp = os.path.join(dirpath, f)
                     if os.path.exists(fp):
                         total_size += os.path.getsize(fp)
-            current_storage = round(total_size / (1024 * 1024), 2) # in MB
+            current_storage = round(total_size / (1024 * 1024), 2)
         except Exception:
             pass
         time.sleep(3)
@@ -119,15 +140,47 @@ def system_monitor_loop():
 threading.Thread(target=system_monitor_loop, daemon=True).start()
 
 # ═══════════════════════════════════════
-#          FULL FEATURED UI HTML
+#          HTML TEMPLATES (WITH HOME & PROFILE)
 # ═══════════════════════════════════════
+LOGIN_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEXUS-X // ADMIN LOGIN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-deep: #050814; --card-bg: #0b1329; --neon-cyan: #00f3ff; --neon-purple: #b000ff; --text-main: #ffffff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg-deep); color: var(--text-main); font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
+        .login-card { background: var(--card-bg); padding: 24px; border-radius: 16px; border: 1px solid rgba(0, 243, 255, 0.25); width: 100%; max-width: 380px; text-align: center; box-shadow: 0 0 20px rgba(0, 243, 255, 0.1); }
+        h2 { font-family: 'Orbitron', sans-serif; font-size: 16px; color: var(--neon-cyan); margin-bottom: 20px; }
+        input[type="password"] { width: 100%; padding: 12px; background: #050814; border: 1px solid rgba(0,243,255,0.4); border-radius: 8px; color: #fff; margin-bottom: 16px; font-size: 14px; text-align: center; outline: none; }
+        .btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #050814; border: none; padding: 12px; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 12px; border-radius: 8px; cursor: pointer; text-transform: uppercase; }
+        .error { color: #ff3366; font-size: 11px; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2>SECURE LOGIN</h2>
+        {% if error %}<p class="error">{{ error }}</p>{% endif %}
+        <form method="POST">
+            <input type="password" name="password" placeholder="Enter Admin Password" required autofocus>
+            <button type="submit" class="btn">Login to Panel</button>
+        </form>
+    </div>
+</body>
+</html>
+"""
+
 PANEL_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEXUS-X // CLOUD IDE & MONITOR</title>
+    <title>NEXUS-X // CLOUD IDE</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -142,16 +195,15 @@ PANEL_HTML = """
             --success: #00ff66;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg-deep); color: var(--text-main); font-family: 'Inter', sans-serif; padding: 16px; padding-bottom: 80px; min-height: 100vh; }
-        .container { width: 100%; max-width: 500px; margin: 0 auto; }
+        body { background: var(--bg-deep); color: var(--text-main); font-family: 'Inter', sans-serif; padding: 16px; padding-bottom: 90px; min-height: 100vh; }
+        .container { width: 100%; max-width: 480px; margin: 0 auto; }
         
-        /* Header with Chorka (Spinner Wheel) */
         .ring-header { background: linear-gradient(135deg, #0e1938, #070d21); padding: 16px; border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.25); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
-        .ring-info h2 { font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 900; color: var(--neon-cyan); text-shadow: 0 0 10px rgba(0,243,255,0.5); }
+        .ring-info h2 { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900; color: var(--neon-cyan); }
         .ring-info p { font-size: 8px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
         
         .spinner-wheel {
-            width: 28px; height: 28px;
+            width: 26px; height: 26px;
             border: 3px solid rgba(0, 243, 255, 0.2);
             border-top: 3px solid var(--neon-cyan);
             border-right: 3px solid var(--neon-pink);
@@ -161,12 +213,11 @@ PANEL_HTML = """
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .card { background: var(--card-bg); padding: 16px; margin-bottom: 16px; border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        .card-title { font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+        .card-title { font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; }
         
         label { font-size: 9px; color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace; display: block; margin-bottom: 4px; }
         input[type="file"] { width: 100%; padding: 8px; background: #050814; border: 1px dashed rgba(0,243,255,0.4); border-radius: 8px; color: var(--text-main); margin-bottom: 10px; font-size: 10px; }
         
-        /* Colorful Glowing Deploy Button */
         .btn-deploy { 
             background: linear-gradient(135deg, #00f3ff, #b000ff, #ff007f); 
             background-size: 200% 200%;
@@ -180,20 +231,15 @@ PANEL_HTML = """
             border-radius: 10px; 
             cursor: pointer; 
             box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
-            animation: gradientShift 4s ease infinite, pulseGlow 2s infinite;
-            transition: 0.2s;
+            animation: gradientShift 4s ease infinite;
         }
-        .btn-deploy:active { transform: scale(0.97); }
         @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        @keyframes pulseGlow { 0% { box-shadow: 0 0 10px rgba(0,243,255,0.3); } 50% { box-shadow: 0 0 20px rgba(255,0,127,0.6); } 100% { box-shadow: 0 0 10px rgba(0,243,255,0.3); } }
 
-        /* Monitor Grid */
-        .monitor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
-        .metric-box { background: rgba(5, 8, 20, 0.7); padding: 10px; border-radius: 8px; border: 1px solid rgba(0,243,255,0.1); }
-        .metric-box h3 { font-family: 'Orbitron', sans-serif; font-size: 11px; color: var(--neon-cyan); margin-top: 4px; }
-        .metric-box span { font-size: 8px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+        .monitor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+        .metric-box { background: rgba(5, 8, 20, 0.7); padding: 8px; border-radius: 8px; border: 1px solid rgba(0,243,255,0.1); }
+        .metric-box h3 { font-family: 'Orbitron', sans-serif; font-size: 10px; color: var(--neon-cyan); margin-top: 3px; }
+        .metric-box span { font-size: 7px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
 
-        /* Bot List Items */
         .bot-item { background: rgba(5, 8, 20, 0.8); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--success); }
         .bot-info h4 { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text-main); }
         .bot-info p { font-size: 8px; color: var(--text-muted); margin-top: 2px; }
@@ -204,22 +250,34 @@ PANEL_HTML = """
         .btn-close { background: #ffaa00; color: #050814; }
         .btn-del { background: var(--danger); color: #fff; }
         .btn-log { background: #333; color: var(--neon-cyan); border: 1px solid var(--neon-cyan); }
+
+        /* Bottom Navigation Bar (Home & Profile) */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: #070d21; border-top: 1px solid rgba(0, 243, 255, 0.2);
+            display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000;
+        }
+        .nav-item {
+            color: var(--text-muted); text-decoration: none; font-family: 'Orbitron', sans-serif;
+            font-size: 9px; font-weight: 700; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px;
+        }
+        .nav-item.active, .nav-item:hover { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0,243,255,0.6); }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header with Spinning Chorka -->
+        <!-- Header with Chorka -->
         <div class="ring-header">
             <div class="ring-info">
-                <h2>NEXUS-X CLOUD v6</h2>
-                <p>MONGODB SYNCED // LIVE MONITOR</p>
+                <h2>NEXUS-X v6</h2>
+                <p>CYBER RING CORE // MONGODB ACTIVE</p>
             </div>
             <div class="spinner-wheel"></div>
         </div>
 
-        <!-- Live System Monitor -->
+        <!-- System Status Monitor -->
         <div class="card">
-            <div class="card-title"><span>System Metrics</span></div>
+            <div class="card-title"><span>System Status</span></div>
             <div class="monitor-grid">
                 <div class="metric-box">
                     <span>CPU</span>
@@ -236,23 +294,23 @@ PANEL_HTML = """
             </div>
         </div>
 
-        <!-- Upload Hub (Bot Script & Requirements) -->
+        <!-- Upload & Run Hub -->
         <div class="card">
-            <div class="card-title"><span>Upload & Deploy Center</span></div>
+            <div class="card-title"><span>Upload & Run Bot</span></div>
             <form action="/upload" method="POST" enctype="multipart/form-data">
-                <label>📁 Select Bot Script (.py / .js / .php / .zip)</label>
+                <label>📁 Select Script (.py / .js / .php / .zip)</label>
                 <input type="file" name="bot_file" required>
                 
-                <label>📦 Optional requirements.txt (Python)</label>
+                <label>📦 Optional Requirements.txt</label>
                 <input type="file" name="req_file">
                 
-                <button type="submit" class="btn-deploy">🚀 UPLOAD & DEPLOY SCRIPT</button>
+                <button type="submit" class="btn-deploy">🚀 Upload & Run</button>
             </form>
         </div>
 
-        <!-- Active Bots Management -->
+        <!-- Active Bots -->
         <div class="card">
-            <div class="card-title"><span>Active Projects & Live Logs</span></div>
+            <div class="card-title"><span>Active Running Bots</span></div>
             {% if bots %}
                 {% for bid, info in bots.items() %}
                 <div class="bot-item">
@@ -272,27 +330,141 @@ PANEL_HTML = """
                 </div>
                 {% endfor %}
             {% else %}
-                <p style="font-size: 9px; font-family: 'JetBrains Mono'; color: var(--text-muted); text-align: center;">No active projects running.</p>
+                <p style="font-size: 9px; font-family: 'JetBrains Mono'; color: var(--text-muted); text-align: center;">No active bots running.</p>
             {% endif %}
         </div>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <div class="bottom-nav">
+        <a href="/home" class="nav-item active">
+            🏠 <span>HOME</span>
+        </a>
+        <a href="/profile" class="nav-item">
+            👤 <span>PROFILE</span>
+        </a>
     </div>
 </body>
 </html>
 """
 
-@app.route('/')
+PROFILE_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEXUS-X // PROFILE & SETTINGS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-deep: #050814; --card-bg: #0b1329; --neon-cyan: #00f3ff; --neon-purple: #b000ff; --text-main: #ffffff; --text-muted: #8a99ad; --success: #00ff66; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg-deep); color: var(--text-main); font-family: 'Inter', sans-serif; padding: 16px; padding-bottom: 90px; min-height: 100vh; }
+        .container { width: 100%; max-width: 480px; margin: 0 auto; }
+        .card { background: var(--card-bg); padding: 16px; margin-bottom: 16px; border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.15); }
+        .card-title { font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 700; margin-bottom: 14px; color: var(--neon-cyan); text-transform: uppercase; }
+        input[type="password"] { width: 100%; padding: 10px; background: #050814; border: 1px solid rgba(0,243,255,0.4); border-radius: 8px; color: #fff; margin-bottom: 12px; font-size: 12px; outline: none; }
+        .btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #050814; border: none; padding: 12px; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; border-radius: 8px; cursor: pointer; text-transform: uppercase; }
+        .msg { color: var(--success); font-size: 10px; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+        .error { color: #ff3366; font-size: 10px; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+        
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: #070d21; border-top: 1px solid rgba(0, 243, 255, 0.2);
+            display: flex; justify-content: space-around; padding: 10px 0; z-index: 1000;
+        }
+        .nav-item {
+            color: var(--text-muted); text-decoration: none; font-family: 'Orbitron', sans-serif;
+            font-size: 9px; font-weight: 700; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px;
+        }
+        .nav-item.active, .nav-item:hover { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0,243,255,0.6); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-title">🔐 Change Admin Password</div>
+            {% if msg %}<p class="msg">{{ msg }}</p>{% endif %}
+            {% if error %}<p class="error">{{ error }}</p>{% endif %}
+            <form method="POST">
+                <input type="password" name="old_pass" placeholder="Current Password" required>
+                <input type="password" name="new_pass" placeholder="New Password" required>
+                <button type="submit" class="btn">Update Password</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-title">⚙️ Session & Actions</div>
+            <a href="/logout" class="btn" style="text-align:center; text-decoration:none; display:block; background:#ff3366; color:#fff;">Logout</a>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <div class="bottom-nav">
+        <a href="/home" class="nav-item">
+            🏠 <span>HOME</span>
+        </a>
+        <a href="/profile" class="nav-item active">
+            👤 <span>PROFILE</span>
+        </a>
+    </div>
+</body>
+</html>
+"""
+
+# ═══════════════════════════════════════
+#             FLASK ROUTES
+# ═══════════════════════════════════════
+@app.route('/', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == get_admin_password():
+            session['logged_in'] = True
+            return redirect(url_for('home'))
+        else:
+            error = "❌ Incorrect Password!"
+    return render_template_string(LOGIN_HTML, error=error)
+
+@app.route('/home')
 def home():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
     return render_template_string(PANEL_HTML, bots=active_processes, cpu=current_cpu, ram=current_ram, storage=current_storage)
+
+@app.route('/profile', methods=['GET', 'POST'])
+def profile():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    msg, error = None, None
+    if request.method == 'POST':
+        old_pass = request.form.get('old_pass')
+        new_pass = request.form.get('new_pass')
+        if old_pass == get_admin_password():
+            if set_admin_password(new_pass):
+                msg = "✅ Password updated successfully!"
+            else:
+                error = "❌ Failed to update password in DB."
+        else:
+            error = "❌ Current password is incorrect!"
+    return render_template_string(PROFILE_HTML, msg=msg, error=error)
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
     if 'bot_file' not in request.files:
         return redirect(url_for('home'))
     file = request.files['bot_file']
     if file.filename == '':
         return redirect(url_for('home'))
     
-    # Handle optional requirements.txt
     req_file = request.files.get('req_file')
     if req_file and req_file.filename != '':
         req_filename = secure_filename(req_file.filename)
@@ -353,6 +525,8 @@ def upload_file():
 
 @app.route('/close/<bot_id>')
 def close_bot(bot_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
     if bot_id in active_processes:
         info = active_processes[bot_id]
         kill_process_by_pid(info["pid"])
@@ -361,6 +535,8 @@ def close_bot(bot_id):
 
 @app.route('/start/<bot_id>')
 def start_bot(bot_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
     if bot_id in active_processes:
         info = active_processes[bot_id]
         file_path = info["file_path"]
@@ -392,6 +568,8 @@ def start_bot(bot_id):
 
 @app.route('/logs/<bot_id>')
 def view_logs(bot_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
     if bot_id in active_processes:
         log_path = active_processes[bot_id]["log_path"]
         if os.path.exists(log_path):
@@ -402,6 +580,8 @@ def view_logs(bot_id):
 
 @app.route('/delete/<bot_id>')
 def delete_bot(bot_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
     if bot_id in active_processes:
         info = active_processes[bot_id]
         kill_process_by_pid(info["pid"])
