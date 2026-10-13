@@ -25,7 +25,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 active_processes = {}
 
-# Dynamic Password Management via MongoDB
+# Dynamic Password Management via MongoDB (Default Pass: admin123)
 def get_admin_password():
     try:
         cfg = config_collection.find_one({"key": "admin_pass"})
@@ -151,7 +151,7 @@ LOGIN_HTML = """
     <title>NEXUS-X // ADMIN LOGIN</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        :root { --bg-deep: #050814; --card-bg: #0b1329; --neon-cyan: #00f3ff; --neon-purple: #b000ff; --text-main: #ffffff; }
+        :root { --bg-deep: #050814; --card-bg: #0b1329; --neon-cyan: #00f3ff; --neon-purple: #b000ff; --text-main: #ffffff; --text-muted: #8a99ad; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: var(--bg-deep); color: var(--text-main); font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
         .login-card { background: var(--card-bg); padding: 24px; border-radius: 16px; border: 1px solid rgba(0, 243, 255, 0.25); width: 100%; max-width: 380px; text-align: center; box-shadow: 0 0 20px rgba(0, 243, 255, 0.1); }
@@ -159,6 +159,7 @@ LOGIN_HTML = """
         input[type="password"] { width: 100%; padding: 12px; background: #050814; border: 1px solid rgba(0,243,255,0.4); border-radius: 8px; color: #fff; margin-bottom: 16px; font-size: 14px; text-align: center; outline: none; }
         .btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #050814; border: none; padding: 12px; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 12px; border-radius: 8px; cursor: pointer; text-transform: uppercase; }
         .error { color: #ff3366; font-size: 11px; margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; }
+        .hint { font-size: 9px; color: var(--text-muted); margin-top: 12px; font-family: 'JetBrains Mono', monospace; }
     </style>
 </head>
 <body>
@@ -169,6 +170,7 @@ LOGIN_HTML = """
             <input type="password" name="password" placeholder="Enter Admin Password" required autofocus>
             <button type="submit" class="btn">Login to Panel</button>
         </form>
+        <div class="hint">Default Pass: <b>admin123</b></div>
     </div>
 </body>
 </html>
@@ -265,7 +267,6 @@ PANEL_HTML = """
 </head>
 <body>
     <div class="container">
-        <!-- Header with Spinning Chorka -->
         <div class="ring-header">
             <div class="ring-info">
                 <h2>NEXUS-X v6</h2>
@@ -274,7 +275,6 @@ PANEL_HTML = """
             <div class="spinner-wheel"></div>
         </div>
 
-        <!-- System Status Monitor -->
         <div class="card">
             <div class="card-title"><span>System Status</span></div>
             <div class="monitor-grid">
@@ -293,7 +293,6 @@ PANEL_HTML = """
             </div>
         </div>
 
-        <!-- Upload & Run Hub -->
         <div class="card">
             <div class="card-title"><span>Upload & Run Bot</span></div>
             <form action="/upload" method="POST" enctype="multipart/form-data">
@@ -307,7 +306,6 @@ PANEL_HTML = """
             </form>
         </div>
 
-        <!-- Active Bots -->
         <div class="card">
             <div class="card-title"><span>Active Running Bots</span></div>
             {% if bots %}
@@ -334,7 +332,6 @@ PANEL_HTML = """
         </div>
     </div>
 
-    <!-- Bottom Navigation Bar -->
     <div class="bottom-nav">
         <a href="/home" class="nav-item active">
             🏠 <span>HOME</span>
@@ -398,7 +395,6 @@ PROFILE_HTML = """
         </div>
     </div>
 
-    <!-- Bottom Navigation Bar -->
     <div class="bottom-nav">
         <a href="/home" class="nav-item">
             🏠 <span>HOME</span>
@@ -465,7 +461,6 @@ def upload_file():
     if file.filename == '':
         return redirect(url_for('home'))
     
-    # Optional requirements.txt processing
     req_file = request.files.get('req_file')
     if req_file and req_file.filename != '':
         req_filename = secure_filename(req_file.filename)
@@ -564,7 +559,7 @@ def start_bot(bot_id):
             active_processes[bot_id]["pid"] = process.pid
             active_processes[bot_id]["status"] = "Running"
         except Exception as e:
-            print(-f"Start error: {e}")
+            print(f"Start error: {e}")
     return redirect(url_for('home'))
 
 @app.route('/logs/<bot_id>')
