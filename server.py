@@ -207,15 +207,16 @@ AUTO_PILOT_HTML = """
         .actions { display: flex; gap: 6px; margin-bottom: 6px; }
         .act-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; }
         
-        .b-start { background: rgba(0, 255, 102, 0.15); color: var(--success); border: 1px solid rgba(0, 255, 102, 0.4); }
-        .b-stop { background: rgba(251, 191, 36, 0.15); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.4); }
-        .b-del { background: rgba(255, 0, 85, 0.15); color: var(--danger); border: 1px solid rgba(255, 0, 85, 0.4); }
+        /* Exact Colors matching your screenshot */
+        .b-start { background: rgba(11, 19, 41, 0.9); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
+        .b-stop { background: rgba(11, 19, 41, 0.9); color: var(--danger); border: 1px solid rgba(255, 0, 85, 0.4); }
+        .b-del { background: rgba(11, 19, 41, 0.9); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.4); }
         
         .secondary-actions { display: flex; gap: 6px; }
         .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; text-align: center; }
-        .b-edit { background: rgba(0, 243, 255, 0.15); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
-        .b-log { background: rgba(176, 0, 255, 0.2); color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.4); }
-        .b-upload { background: rgba(0, 243, 255, 0.15); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
+        .b-edit { background: rgba(11, 19, 41, 0.9); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
+        .b-log { background: rgba(11, 19, 41, 0.9); color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.4); }
+        .b-upload { background: rgba(11, 19, 41, 0.9); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
 
         #editorModal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -292,7 +293,7 @@ AUTO_PILOT_HTML = """
         </div>
     </div>
 
-    <!-- Hidden file input for uploading requirements to a specific bot -->
+    <!-- Hidden file input for requirements.txt upload -->
     <input type="file" id="hiddenReqInput" accept=".txt" style="display:none;" onchange="handleReqFileSelected(event)">
 
     <div id="editorModal">
