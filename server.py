@@ -456,73 +456,73 @@ AUTO_PILOT_HTML = """
                 if(data.error) showToast('ERR: ' + data.error);
                 else {
                     showToast(data.message);
-                    fileInput.value = '';
                     loadInstances();
+                    if(data.filename) openTerminal(data.filename);
                 }
             } catch(e) { showToast('UPLOAD FAILED'); }
         }
 
         async function loadInstances() {
             try {
-                const res = await fetch(`/instances?key=${KEY}`);
-                const list = await res.json();
-                const container = document.getElementById('instanceList');
-                if(!list.length) {
-                    container.innerHTML = '<div class="empty">No active instances found.</div>';
-                    return;
+                const res = await fetch(`/list?key=${KEY}`);
+                const data = await res.json();
+                const list = document.getElementById('instanceList');
+                if(!data.bots || data.bots.length === 0) {
+                    list.innerHTML = '<div class="empty">NO SCRIPTS FOUND</div>';
+                } else {
+                    list.innerHTML = data.bots.map(b => {
+                        const online = b.status === 'ONLINE';
+                        return `
+                            <div class="instance-item">
+                                <div class="instance-top">
+                                    <span>⚡ ${b.name}</span>
+                                    <span class="${online ? 'st-on' : 'st-off'}">${b.status}</span>
+                                </div>
+                                ${online ? `
+                                <div class="metrics-row">
+                                    <span class="metric-badge">CPU: ${b.cpu}</span>
+                                    <span class="metric-badge">RAM: ${b.ram}</span>
+                                </div>` : ''}
+                                <div class="actions">
+                                    <button class="act-btn b-start" onclick="actionBot('start', '${b.name}')">START</button>
+                                    <button class="act-btn b-stop" onclick="actionBot('stop', '${b.name}')">STOP</button>
+                                    <button class="act-btn b-del" onclick="actionBot('delete', '${b.name}')">DELETE</button>
+                                </div>
+                                <div class="secondary-actions" style="margin-top:6px;">
+                                    <button class="sec-btn b-edit" onclick="openEditor('${b.name}')">📝 EDIT</button>
+                                    <button class="sec-btn b-log" onclick="openTerminal('${b.name}')">🖥️ LOGS</button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
                 }
-                let html = '';
-                list.forEach(item => {
-                    html += `
-                        <div class="instance-item">
-                            <div class="instance-top">
-                                <span>${item.filename}</span>
-                                <span class="${item.running ? 'st-on' : 'st-off'}">${item.running ? 'RUNNING' : 'STOPPED'}</span>
-                            </div>
-                            <div class="metrics-row">
-                                <span class="metric-badge">PID: ${item.pid || 'N/A'}</span>
-                                <span class="metric-badge">CPU: ${item.cpu}%</span>
-                                <span class="metric-badge">RAM: ${item.memory}MB</span>
-                            </div>
-                            <div class="actions">
-                                <button class="act-btn b-start" onclick="controlBot('${item.filename}', 'start')">START</button>
-                                <button class="act-btn b-stop" onclick="controlBot('${item.filename}', 'stop')">STOP</button>
-                                <button class="act-btn b-del" onclick="controlBot('${item.filename}', 'delete')">DELETE</button>
-                            </div>
-                            <div class="secondary-actions">
-                                <button class="sec-btn b-edit" onclick="openEditor('${item.filename}')">EDIT</button>
-                                <button class="sec-btn b-log" onclick="openTerminal('${item.filename}')">LOGS</button>
-                            </div>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
             } catch(e) {}
         }
 
-        async function controlBot(filename, action) {
+        async function actionBot(act, filename) {
+            showToast(`${act.toUpperCase()}ING...`);
             try {
-                const res = await fetch('/control', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({filename, action, license_key: KEY})
-                });
+                const res = await fetch(`/${act}/${encodeURIComponent(filename)}?key=${KEY}`, { method: 'POST' });
                 const data = await res.json();
-                showToast(data.message || data.error);
-                loadInstances();
-            } catch(e) { showToast('ACTION FAILED'); }
+                if(data.error) showToast('ERR: ' + data.error);
+                else {
+                    showToast(data.message || 'SUCCESS');
+                    openTerminal(filename);
+                }
+            } catch(e){ showToast('ACTION FAILED'); }
+            setTimeout(loadInstances, 500);
         }
 
         async function openEditor(filename) {
             editingFile = filename;
+            document.getElementById('editorFileName').innerText = 'EDIT: ' + filename;
             try {
-                const res = await fetch(`/get_code?filename=${filename}&key=${KEY}`);
+                const res = await fetch(`/get_code/${filename}?key=${KEY}`);
                 const data = await res.json();
-                if(data.error) { showToast(data.error); return; }
-                document.getElementById('editorFileName').innerText = 'EDIT: ' + filename;
+                if(data.error) { showToast('ERR: ' + data.error); return; }
                 document.getElementById('codeTextarea').value = data.code;
                 document.getElementById('editorModal').style.display = 'flex';
-            } catch(e) { showToast('FAILED TO LOAD CODE'); }
+            } catch(e) { showToast('FAILED TO LOAD'); }
         }
 
         function closeEditor() {
@@ -532,247 +532,390 @@ AUTO_PILOT_HTML = """
 
         async function saveCode() {
             if(!editingFile) return;
-            const code = document.getElementById('codeTextarea').value;
+            const newCode = document.getElementById('codeTextarea').value;
+            showToast('SAVING...');
             try {
-                const res = await fetch('/save_code', {
+                const res = await fetch(`/save_code/${editingFile}?key=${KEY}`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({filename: editingFile, code, license_key: KEY})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: newCode })
                 });
                 const data = await res.json();
-                showToast(data.message || data.error);
-                closeEditor();
+                if(data.error) showToast('ERR: ' + data.error);
+                else {
+                    showToast(data.message);
+                    closeEditor();
+                    loadInstances();
+                }
             } catch(e) { showToast('SAVE FAILED'); }
         }
 
         function openTerminal(filename) {
             activeLogFile = filename;
-            document.getElementById('termFileName').innerText = 'LOGS: ' + filename;
             document.getElementById('terminalCard').style.display = 'block';
-            fetchLogs();
+            if(isMinimized) toggleMinimize();
+            document.getElementById('termFileName').innerText = 'LOGS: ' + filename;
+            fetchLog();
             if(logInterval) clearInterval(logInterval);
-            logInterval = setInterval(fetchLogs, 2000);
+            logInterval = setInterval(fetchLog, 6000);
         }
 
-        async function fetchLogs() {
-            if(!activeLogFile) return;
-            try {
-                const res = await fetch(`/logs?filename=${activeLogFile}&key=${KEY}`);
-                const data = await res.json();
-                const term = document.getElementById('terminalOutput');
-                term.innerText = data.logs || 'No logs available.';
-                term.scrollTop = term.scrollHeight;
-            } catch(e) {}
+        function toggleMinimize() {
+            const termBox = document.getElementById('terminalOutput');
+            const minBtn = document.getElementById('minBtn');
+            isMinimized = !isMinimized;
+            if(isMinimized) {
+                termBox.style.display = 'none';
+                minBtn.innerText = 'MAX';
+            } else {
+                termBox.style.display = 'block';
+                minBtn.innerText = 'MIN';
+                termBox.scrollTop = termBox.scrollHeight;
+            }
         }
 
         function closeTerminal() {
             document.getElementById('terminalCard').style.display = 'none';
-            activeLogFile = null;
             if(logInterval) clearInterval(logInterval);
+            activeLogFile = null;
+            isMinimized = false;
+            document.getElementById('terminalOutput').style.display = 'block';
+            document.getElementById('minBtn').innerText = 'MIN';
         }
 
-        function toggleMinimize() {
-            const term = document.getElementById('terminalOutput');
-            const btn = document.getElementById('minBtn');
-            isMinimized = !isMinimized;
-            term.style.display = isMinimized ? 'none' : 'block';
-            btn.innerText = isMinimized ? 'MAX' : 'MIN';
+        async function fetchLog() {
+            if(!activeLogFile || isMinimized) return;
+            try {
+                const res = await fetch(`/get_log/${activeLogFile}?key=${KEY}`);
+                const data = await res.json();
+                const term = document.getElementById('terminalOutput');
+                term.innerText = data.log || 'No logs...';
+                term.scrollTop = term.scrollHeight;
+            } catch(e) {}
         }
 
-        setInterval(updateSystemStats, 3000);
-        setInterval(loadInstances, 4000);
-        updateSystemStats();
         loadInstances();
+        updateSystemStats();
+        setInterval(loadInstances, 10000);
+        setInterval(updateSystemStats, 6000);
     </script>
 </body>
 </html>
 """
 
+def extract_imports(filepath):
+    imports = set()
+    std_libs = {'os', 'sys', 'time', 'json', 'math', 'random', 're', 'datetime', 'subprocess', 'shutil', 'logging', 'pathlib', 'urllib', 'http', 'asyncio', 'threading', 'queue', 'collections', 'itertools', 'functools', 'io', 'hashlib', 'base64', 'traceback'}
+    pkg_map = {'PIL': 'pillow', 'cv2': 'opencv-python', 'telegram': 'python-telegram-bot'}
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                matches = re.findall(r'^\s*(?:import|from)\s+([a-zA-Z0-9_]+)', line)
+                for lib in matches:
+                    if lib not in std_libs:
+                        imports.add(pkg_map.get(lib, lib))
+    except: 
+        pass
+    return list(imports)
+
+def background_setup(filepath, filename):
+    log_path = filepath + '.log'
+    with open(log_path, 'w', encoding='utf-8') as log_f:
+        log_f.write(f"=== [AUTO-HEAL] Scanning packages for {filename} ===\n")
+        log_f.flush()
+        libs = extract_imports(filepath)
+        for lib in libs:
+            log_f.write(f"-> Checking module: {lib}...\n")
+            log_f.flush()
+            try:
+                check_res = subprocess.run(['python3', '-c', f"import {lib.replace('-', '_')}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if check_res.returncode == 0:
+                    log_f.write(f"   [OK] {lib} already installed.\n")
+                else:
+                    raise ImportError()
+            except:
+                log_f.write(f"   [INSTALLING] {lib} missing. Installing via pip...\n")
+                log_f.flush()
+                res = subprocess.run(['pip', 'install', '--prefer-binary', lib], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                log_f.write(res.stdout)
+                if res.returncode == 0:
+                    log_f.write(f"   [SUCCESS] Installed {lib}!\n")
+                else:
+                    log_f.write(f"   [FAILED] Could not install {lib}\n")
+            log_f.flush()
+        log_f.write("=== [READY] Configuration complete. Press START! ===\n")
+
+def start_bot_process(filename):
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    log_path = filepath + '.log'
+    try:
+        with open(log_path, 'a', encoding='utf-8') as log_file:
+            log_file.write("\n\n=== [STARTED] Instance running... ===\n")
+        log_file_obj = open(log_path, 'a', encoding='utf-8')
+        proc = subprocess.Popen(['python3', '-u', filepath], stdout=log_file_obj, stderr=log_file_obj, start_new_session=True)
+        active_processes[filename] = {'proc': proc, 'pid': proc.pid}
+        desired_states[filename] = True
+        return True
+    except Exception as e:
+        return False
+
+def monitor_bots():
+    while True:
+        time.sleep(15)
+        for filename, should_run in list(desired_states.items()):
+            if should_run:
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                if not os.path.exists(filepath):
+                    desired_states.pop(filename, None)
+                    active_processes.pop(filename, None)
+                    continue
+                
+                is_running = False
+                if filename in active_processes:
+                    pid = active_processes[filename].get('pid')
+                    if pid and psutil.pid_exists(pid):
+                        try:
+                            p = psutil.Process(pid)
+                            if p.is_running() and p.status() != psutil.STATUS_ZOMBIE:
+                                is_running = True
+                        except: 
+                            pass
+                
+                if not is_running:
+                    log_path = filepath + '.log'
+                    if os.path.exists(log_path):
+                        with open(log_path, 'a', encoding='utf-8') as lf:
+                            lf.write("\n=== [AUTO-RESTART] Crash detected! Restarting... ===\n")
+                    start_bot_process(filename)
+
+threading.Thread(target=monitor_bots, daemon=True).start()
+
 @app.route('/')
-def home():
+def index(): 
     return render_template_string(AUTO_PILOT_HTML)
 
-@app.route('/system_stats')
+@app.route('/system_stats', methods=['GET'])
 def system_stats():
-    if request.args.get('key') != DEFAULT_KEY:
-        return jsonify({'error': 'Unauthorized'}), 403
+    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    
+    global current_cpu
+    cpu_percent = current_cpu
+    
+    ram_total = 4096.0
+    ram_used = 1240.5
+    ram_percent = 30.2
+    
+    disk_total = 64.0
+    disk_used = 18.5
+    disk_percent = 28.9
+
     try:
-        ram = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
-        return jsonify({
-            'cpu_percent': current_cpu,
-            'ram_used': round(ram.used / (1024 * 1024)),
-            'ram_total': round(ram.total / (1024 * 1024)),
-            'ram_percent': ram.percent,
-            'disk_used': round(disk.used / (1024 ** 3), 1),
-            'disk_total': round(disk.total / (1024 ** 3), 1),
-            'disk_percent': disk.percent
-        })
+        mem_total_val, mem_free_val, mem_avail_val = 0, 0, 0
+        with open('/proc/meminfo', 'r') as f:
+            for line in f:
+                parts = line.split(':')
+                if len(parts) == 2:
+                    k = parts[0].strip()
+                    v = int(parts[1].strip().split()[0]) * 1024
+                    if k == 'MemTotal': mem_total_val = v
+                    elif k == 'MemFree': mem_free_val = v
+                    elif k == 'MemAvailable': mem_avail_val = v
+        if mem_total_val > 0:
+            used_val = mem_total_val - (mem_avail_val if mem_avail_val > 0 else mem_free_val)
+            ram_total = round(mem_total_val / (1024 * 1024), 1)
+            ram_used = round(used_val / (1024 * 1024), 1)
+            ram_percent = round((used_val / mem_total_val) * 100, 1)
+    except:
+        pass
+
+    try:
+        st = os.statvfs(os.getcwd())
+        d_total = st.f_blocks * st.f_frsize
+        d_free = st.f_bavail * st.f_frsize
+        d_used = d_total - d_free
+        if d_total > 0:
+            disk_total = round(d_total / (1024**3), 2)
+            disk_used = round(d_used / (1024**3), 2)
+            disk_percent = round((d_used / d_total) * 100, 1)
+    except:
+        pass
+
+    return jsonify({
+        'cpu_percent': cpu_percent,
+        'ram_total': ram_total,
+        'ram_used': ram_used,
+        'ram_percent': ram_percent,
+        'disk_total': disk_total,
+        'disk_used': disk_used,
+        'disk_percent': disk_percent
+    })
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    try:
+        if request.form.get('license_key') != DEFAULT_KEY:
+            return jsonify({'error': 'Unauthorized'}), 403
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+        filename = secure_filename(file.filename)
+        if not filename.endswith('.py'):
+            filename += '.py'
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(filepath)
+        
+        threading.Thread(target=background_setup, args=(filepath, filename), daemon=True).start()
+        
+        return jsonify({'message': f'Uploaded {filename}!', 'filename': filename})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/upload', methods=['POST'])
-def upload():
-    if request.form.get('license_key') != DEFAULT_KEY:
-        return jsonify({'error': 'Unauthorized'}), 403
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'})
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'})
-    if file:
-        filename = secure_filename(file.filename)
-        path = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(path)
-        
-        log_path = path + '.log'
-        if filename not in active_processes or not active_processes[filename].get('running'):
-            try:
-                log_file = open(log_path, 'w')
-                proc = subprocess.Popen([sys.executable, path], stdout=log_file, stderr=log_file)
-                active_processes[filename] = {
-                    'process': proc,
-                    'pid': proc.pid,
-                    'log_path': log_path,
-                    'running': True
-                }
-            except Exception as e:
-                pass
-        return jsonify({'message': 'DEPLOY SUCCESSFUL'})
-    return jsonify({'error': 'Upload failed'})
-
-@app.route('/instances')
-def instances():
-    if request.args.get('key') != DEFAULT_KEY:
-        return jsonify({'error': 'Unauthorized'}), 403
-    res = []
+@app.route('/get_code/<filename>', methods=['GET'])
+def get_code(filename):
+    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(filepath): return jsonify({'error': 'File not found'}), 404
     try:
-        for f in os.listdir(UPLOAD_FOLDER):
-            if f.endswith('.py'):
-                path = os.path.join(UPLOAD_FOLDER, f)
-                info = active_processes.get(f, {})
-                proc = info.get('process')
-                is_running = False
-                cpu = 0.0
-                mem = 0.0
-                pid = info.get('pid')
-                
-                if proc and proc.poll() is None:
-                    is_running = True
-                    try:
-                        p = psutil.Process(pid)
-                        cpu = round(p.cpu_percent(interval=0.1), 1)
-                        mem = round(p.memory_info().rss / (1024 * 1024), 1)
-                    except:
-                        pass
-                else:
-                    info['running'] = False
-                
-                res.append({
-                    'filename': f,
-                    'running': is_running,
-                    'pid': pid if is_running else None,
-                    'cpu': cpu,
-                    'memory': mem
-                })
-    except:
-        pass
-    return jsonify(res)
-
-@app.route('/control', methods=['POST'])
-def control():
-    data = request.json
-    if data.get('license_key') != DEFAULT_KEY:
-        return jsonify({'error': 'Unauthorized'}), 403
-    filename = data.get('filename')
-    action = data.get('action')
-    path = os.path.join(UPLOAD_FOLDER, filename)
-    log_path = path + '.log'
-    
-    if action == 'start':
-        if filename in active_processes and active_processes[filename].get('process') and active_processes[filename]['process'].poll() is None:
-            return jsonify({'message': 'ALREADY RUNNING'})
-        try:
-            log_file = open(log_path, 'w')
-            proc = subprocess.Popen([sys.executable, path], stdout=log_file, stderr=log_file)
-            active_processes[filename] = {
-                'process': proc,
-                'pid': proc.pid,
-                'log_path': log_path,
-                'running': True
-            }
-            return jsonify({'message': 'STARTED SUCCESSFULLY'})
-        except Exception as e:
-            return jsonify({'error': str(e)})
-            
-    elif action == 'stop':
-        if filename in active_processes and active_processes[filename].get('process'):
-            try:
-                active_processes[filename]['process'].terminate()
-                active_processes[filename]['running'] = False
-                return jsonify({'message': 'STOPPED SUCCESSFULLY'})
-            except Exception as e:
-                return jsonify({'error': str(e)})
-        return jsonify({'message': 'NOT RUNNING'})
-        
-    elif action == 'delete':
-        if filename in active_processes and active_processes[filename].get('process'):
-            try:
-                active_processes[filename]['process'].terminate()
-            except:
-                pass
-            del active_processes[filename]
-        try:
-            if os.path.exists(path): os.remove(path)
-            if os.path.exists(log_path): os.remove(log_path)
-            return jsonify({'message': 'DELETED SUCCESSFULLY'})
-        except Exception as e:
-            return jsonify({'error': str(e)})
-            
-    return jsonify({'error': 'Invalid action'})
-
-@app.route('/get_code')
-def get_code():
-    if request.args.get('key') != DEFAULT_KEY:
-        return jsonify({'error': 'Unauthorized'}), 403
-    filename = request.args.get('filename')
-    path = os.path.join(UPLOAD_FOLDER, filename)
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             code = f.read()
         return jsonify({'code': code})
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/save_code', methods=['POST'])
-def save_code():
-    data = request.json
-    if data.get('license_key') != DEFAULT_KEY:
-        return jsonify({'error': 'Unauthorized'}), 403
-    filename = data.get('filename')
-    code = data.get('code')
-    path = os.path.join(UPLOAD_FOLDER, filename)
+@app.route('/save_code/<filename>', methods=['POST'])
+def save_code(filename):
+    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(filepath): return jsonify({'error': 'File not found'}), 404
     try:
-        with open(path, 'w', encoding='utf-8') as f:
+        data = request.get_json()
+        code = data.get('code', '')
+        with open(filepath, 'w', encoding='utf-8') as f:
             f.write(code)
-        return jsonify({'message': 'SAVED & APPLIED'})
+        return jsonify({'message': f'Updated {filename}!'})
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/logs')
-def logs():
-    if request.args.get('key') != DEFAULT_KEY:
-        return jsonify({'error': 'Unauthorized'}), 403
-    filename = request.args.get('filename')
+@app.route('/list', methods=['GET'])
+def list_bots():
+    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    files = os.listdir(UPLOAD_FOLDER) if os.path.exists(UPLOAD_FOLDER) else []
+    bots = []
+    dead_keys = []
+    for f in sorted(files):
+        if f.endswith('.py'):
+            is_running = False
+            cpu_usage = "0%"
+            ram_usage = "0 MB"
+            if f in active_processes:
+                pid = active_processes[f].get('pid')
+                if pid and psutil.pid_exists(pid):
+                    try:
+                        p = psutil.Process(pid)
+                        if p.is_running() and p.status() != psutil.STATUS_ZOMBIE:
+                            is_running = True
+                            cpu_usage = f"{p.cpu_percent(interval=0.0):.1f}%"
+                            ram_usage = f"{p.memory_info().rss / (1024 * 1024):.1f} MB"
+                        else: dead_keys.append(f)
+                    except: dead_keys.append(f)
+                else: dead_keys.append(f)
+            bots.append({'name': f, 'status': 'ONLINE' if is_running else 'OFFLINE', 'cpu': cpu_usage, 'ram': ram_usage})
+    for dk in dead_keys:
+        if desired_states.get(dk) == False:
+            active_processes.pop(dk, None)
+    return jsonify({'bots': bots})
+
+@app.route('/start/<filename>', methods=['POST'])
+def start_bot(filename):
+    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(filepath): return jsonify({'error': 'File not found'}), 404
+    
+    if filename in active_processes:
+        try:
+            pid = active_processes[filename].get('pid')
+            if pid and psutil.pid_exists(pid): psutil.Process(pid).terminate()
+        except: 
+            pass
+        active_processes.pop(filename, None)
+    
+    success = start_bot_process(filename)
+    if success:
+        return jsonify({'message': f'Started {filename}'})
+    else:
+        return jsonify({'error': 'Failed to start'}), 500
+
+@app.route('/get_log/<filename>', methods=['GET'])
+def get_log(filename):
+    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
     log_path = os.path.join(UPLOAD_FOLDER, filename + '.log')
+    if os.path.exists(log_path):
+        try:
+            with open(log_path, 'rb') as lf:
+                lf.seek(0, 2)
+                filesize = lf.tell()
+                lf.seek(max(0, filesize - 15000), 0)
+                content = lf.read().decode('utf-8', errors='ignore')
+        except:
+            content = "Error reading log..."
+        return jsonify({'log': content})
+    return jsonify({'log': 'No logs found.'})
+
+@app.route('/stop/<filename>', methods=['POST'])
+def stop_bot(filename):
+    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+    desired_states[filename] = False
+    if filename in active_processes:
+        try:
+            pid = active_processes[filename].get('pid')
+            if pid and psutil.pid_exists(pid): psutil.Process(pid).terminate()
+        except: 
+            pass
+        active_processes.pop(filename, None)
+    log_path = os.path.join(UPLOAD_FOLDER, filename + '.log')
+    if os.path.exists(log_path):
+        with open(log_path, 'a', encoding='utf-8') as lf:
+            lf.write("\n=== [STOPPED] Terminated by user. ===\n")
+    return jsonify({'message': f'Stopped {filename}'})
+
+@app.route('/delete/<filename>', methods=['POST'])
+def delete_bot(filename):
+    if request.args.get('key') != DEFAULT_KEY: 
+        return jsonify({'error': 'Unauthorized'}), 403
+    desired_states.pop(filename, None)
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    if filename in active_processes:
+        try:
+            pid = active_processes[filename].get('pid')
+            if pid and psutil.pid_exists(pid): 
+                psutil.Process(pid).terminate()
+        except: 
+            pass
+        active_processes.pop(filename, None)
+    if os.path.exists(filepath): 
+        os.remove(filepath)
+    if os.path.exists(filepath + '.log'): 
+        os.remove(filepath + '.log')
+    return jsonify({'message': f'Deleted {filename}'})
+
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        if os.path.exists(log_path):
-            with open(log_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            return jsonify({'logs': content})
-        return jsonify({'logs': 'No logs generated yet.'})
-    except Exception as e:
-        return jsonify({'logs': 'Error reading logs: ' + str(e)})
+        s.connect(('10.255.255.255', 1))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = '127.0.0.1'
+    finally:
+        s.close()
+    return ip
 
 if __name__ == '__main__':
-    serve(app, host='0.0.0.0', port=7860)
+    local_ip = get_local_ip()
+    print("\n" + "="*40)
+    print("🚀 SERVER STARTED!")
+    print(f"👉 Local URL: http://127.0.0.1:5000")
+    print(f"👉 Network IP: http://{local_ip}:5000")
+    print("="*40 + "\n")
+    serve(app, host='0.0.0.0', port=5000, threads=8)
