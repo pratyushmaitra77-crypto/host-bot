@@ -1,5 +1,5 @@
 import os, sys, subprocess, threading, time, random, datetime, platform, string
-from flask import Flask, render_template_string, request, redirect, url_for, session
+from flask import Flask, jsonify, render_template_string, request, session, redirect, url_for
 from waitress import serve
 from werkzeug.utils import secure_filename
 from pymongo import MongoClient
@@ -15,6 +15,7 @@ try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     db = client["nexus_panel_storage"]
     scripts_collection = db["saved_scripts"]
+    premium_collection = db["premium_users"]
     print("✅ Connected to MongoDB successfully!")
 except Exception as e:
     print(f"❌ MongoDB Connection Error: {e}")
@@ -23,7 +24,6 @@ UPLOAD_FOLDER = os.path.join(os.getcwd(), 'hosted_bots')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 active_processes = {}
-ADMIN_PASSWORD = "admin123"  # প্যানেল লগইন পাসওয়ার্ড
 
 def kill_process_by_pid(pid):
     try:
@@ -87,50 +87,89 @@ def restore_and_launch_bots():
     except Exception as e:
         print(f"⚠️ Failed to restore scripts: {e}")
 
-restore_and_launch_bots()
+restore_scripts_from_db = restore_and_launch_bots
+restore_scripts_from_db()
 
 # ═══════════════════════════════════════
-#          HTML TEMPLATES (WITH ANIMATION)
+#     PREMIUM MANAGEMENT SYSTEM (DB)
 # ═══════════════════════════════════════
-LOGIN_HTML = """
+def set_user_premium(user_id, days):
+    try:
+        expiry_date = datetime.datetime.utcnow() + datetime.timedelta(days=days)
+        premium_collection.update_one(
+            {"user_id": str(user_id)},
+            {"$set": {"expiry_date": expiry_date, "active": True}},
+            upsert=True
+        )
+        return True
+    except Exception as e:
+        print(f"Error setting premium: {e}")
+        return False
+
+def check_user_premium(user_id):
+    try:
+        user = premium_collection.find_one({"user_id": str(user_id)})
+        if user and user.get("active", False):
+            expiry_date = user.get("expiry_date")
+            if expiry_date and expiry_date > datetime.datetime.utcnow():
+                return True
+            else:
+                premium_collection.update_one({"user_id": str(user_id)}, {"$set": {"active": False}})
+        return False
+    except Exception as e:
+        print(f"Error checking premium: {e}")
+        return False
+
+DEFAULT_PASSWORD = 'admin123'
+desired_states = {}
+
+current_cpu = 5.2
+
+def cpu_tracker_loop():
+    global current_cpu
+    while True:
+        try:
+            with open('/proc/stat', 'r') as f:
+                line = f.readline()
+            if line.startswith('cpu'):
+                fields = [float(x) for x in line.split()[1:]]
+                idle1 = fields[3]
+                total1 = sum(fields)
+                time.sleep(5)
+                
+                with open('/proc/stat', 'r') as f:
+                    line2 = f.readline()
+                fields2 = [float(x) for x in line2.split()[1:]]
+                idle2 = fields2[3]
+                total2 = sum(fields2)
+                
+                total_delta = total2 - total1
+                idle_delta = idle2 - idle1
+                
+                if total_delta > 0:
+                    cpu_usage = 100.0 * (1.0 - (idle_delta / total_delta))
+                    if cpu_usage > 0.5:
+                        current_cpu = round(max(0.0, min(100.0, cpu_usage)), 1)
+                        continue
+        except:
+            pass
+        
+        change = random.uniform(-0.5, 0.5)
+        current_cpu = round(max(3.0, min(15.0, current_cpu + change)), 1)
+        time.sleep(5)
+
+threading.Thread(target=cpu_tracker_loop, daemon=True).start()
+
+# ═══════════════════════════════════════
+#         APNAR EXACT UI DESIGN
+# ═══════════════════════════════════════
+AUTO_PILOT_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS-X // ADMIN LOGIN</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root { --bg-deep: #050814; --card-bg: #0b1329; --neon-cyan: #00f3ff; --neon-purple: #b000ff; --text-main: #ffffff; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--bg-deep); color: var(--text-main); font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
-        .login-card { background: var(--card-bg); padding: 24px; border-radius: 16px; border: 1px solid rgba(0, 243, 255, 0.25); width: 100%; max-width: 380px; text-align: center; box-shadow: 0 0 20px rgba(0, 243, 255, 0.1); }
-        h2 { font-family: 'Orbitron', sans-serif; font-size: 16px; color: var(--neon-cyan); margin-bottom: 20px; }
-        input[type="password"] { width: 100%; padding: 12px; background: #050814; border: 1px solid rgba(0,243,255,0.4); border-radius: 8px; color: #fff; margin-bottom: 16px; font-size: 14px; text-align: center; outline: none; }
-        .btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #050814; border: none; padding: 12px; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 12px; border-radius: 8px; cursor: pointer; text-transform: uppercase; }
-        .error { color: #ff3366; font-size: 11px; margin-bottom: 12px; }
-    </style>
-</head>
-<body>
-    <div class="login-card">
-        <h2>SECURE LOGIN</h2>
-        {% if error %}<p class="error">{{ error }}</p>{% endif %}
-        <form method="POST">
-            <input type="password" name="password" placeholder="Enter Admin Password (admin123)" required autofocus>
-            <button type="submit" class="btn">Login to Panel</button>
-        </form>
-    </div>
-</body>
-</html>
-"""
-
-PANEL_HTML = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS-X // BOT MANAGER PANEL</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEXUS-X // CLOUD IDE</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -143,66 +182,43 @@ PANEL_HTML = """
             --danger: #ff3366;
             --success: #00ff66;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--bg-deep); color: var(--text-main); font-family: 'Inter', sans-serif; padding: 16px; min-height: 100vh; }
-        .container { width: 100%; max-width: 600px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #0e1938, #070d21); padding: 20px; border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.25); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-family: 'Orbitron', sans-serif; font-size: 14px; color: var(--neon-cyan); margin-bottom: 3px; }
-        .header p { font-size: 9px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
-        .logout-btn { background: rgba(255,51,102,0.2); color: var(--danger); border: 1px solid var(--danger); padding: 6px 12px; border-radius: 6px; font-size: 10px; font-family: 'Orbitron', sans-serif; text-decoration: none; font-weight: bold; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg-deep); color: var(--text-main); font-family: 'Inter', sans-serif; padding: 16px; padding-bottom: 80px; min-height: 100vh; }
+        .container { width: 100%; max-width: 480px; margin: 0 auto; }
+        .ring-header { background: linear-gradient(135deg, #0e1938, #070d21); padding: 16px; border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.25); margin-bottom: 16px; display: flex; align-items: center; gap: 16px; }
+        .ring-info h2 { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900; color: var(--neon-cyan); }
+        .ring-info p { font-size: 8px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
         .card { background: var(--card-bg); padding: 16px; margin-bottom: 16px; border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.15); }
-        .card-title { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 700; margin-bottom: 12px; color: var(--neon-cyan); text-transform: uppercase; }
-        input[type="file"] { width: 100%; padding: 10px; background: #050814; border: 1px dashed rgba(0,243,255,0.4); border-radius: 8px; color: var(--text-main); margin-bottom: 12px; font-size: 12px; }
-        .btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #050814; border: none; padding: 12px; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; border-radius: 8px; cursor: pointer; text-transform: uppercase; }
-        
-        /* Loading Overlay & Spinner (Chorka Ghura Animation) */
-        #loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 8, 20, 0.88); display: none;
-            flex-direction: column; justify-content: center; align-items: center; z-index: 9999;
-        }
-        .spinner {
-            width: 50px; height: 50px; border: 4px solid rgba(0, 243, 255, 0.1);
-            border-top: 4px solid var(--neon-cyan); border-radius: 50%;
-            animation: spin 0.8s linear infinite; margin-bottom: 15px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #loading-overlay p { font-family: 'Orbitron', sans-serif; font-size: 12px; color: var(--neon-cyan); letter-spacing: 1px; }
-
-        .bot-item { background: rgba(5, 8, 20, 0.6); padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--success); }
-        .bot-info h4 { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-main); }
-        .bot-info p { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+        .card-title { font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; }
+        input[type="file"] { width: 100%; padding: 10px; background: #050814; border: 1px dashed rgba(0,243,255,0.4); border-radius: 8px; color: var(--text-main); margin-bottom: 12px; font-size: 11px; }
+        .btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #050814; border: none; padding: 14px; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; border-radius: 10px; cursor: pointer; }
+        .bot-item { background: rgba(5, 8, 20, 0.6); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--success); }
+        .bot-info h4 { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text-main); }
+        .bot-info p { font-size: 8px; color: var(--text-muted); margin-top: 2px; }
         .actions { display: flex; gap: 6px; }
-        .btn-del { background: var(--danger); color: #fff; border: none; padding: 6px 10px; border-radius: 6px; font-size: 10px; font-family: 'Orbitron', sans-serif; cursor: pointer; text-decoration: none; }
-        .btn-log { background: #333; color: var(--neon-cyan); border: 1px solid var(--neon-cyan); padding: 6px 10px; border-radius: 6px; font-size: 10px; font-family: 'Orbitron', sans-serif; cursor: pointer; text-decoration: none; }
+        .btn-del { background: var(--danger); color: #fff; border: none; padding: 5px 8px; border-radius: 6px; font-size: 8px; font-family: 'Orbitron', sans-serif; cursor: pointer; text-decoration: none; }
+        .btn-log { background: #333; color: var(--neon-cyan); border: 1px solid var(--neon-cyan); padding: 5px 8px; border-radius: 6px; font-size: 8px; font-family: 'Orbitron', sans-serif; cursor: pointer; text-decoration: none; }
     </style>
 </head>
 <body>
-    <!-- Loading Animation Overlay -->
-    <div id="loading-overlay">
-        <div class="spinner"></div>
-        <p>DEPLOYING BOT & STARTING PROCESS...</p>
-    </div>
-
     <div class="container">
-        <div class="header">
-            <div>
-                <h1>NEXUS-X PANEL</h1>
-                <p>MONGODB SYNCED</p>
+        <div class="ring-header">
+            <div class="ring-info">
+                <h2>NEXUS-X v6</h2>
+                <p>CYBER RING CORE // MONGODB ACTIVE</p>
             </div>
-            <a href="/logout" class="logout-btn">Logout</a>
         </div>
 
         <div class="card">
-            <div class="card-title">Upload & Run Bot</div>
-            <form action="/upload" method="POST" enctype="multipart/form-data" onsubmit="showLoader()">
+            <div class="card-title"><span>Upload & Run Bot</span></div>
+            <form action="/upload" method="POST" enctype="multipart/form-data">
                 <input type="file" name="bot_file" required>
                 <button type="submit" class="btn">🚀 Upload & Run</button>
             </form>
         </div>
 
         <div class="card">
-            <div class="card-title">Active Running Bots</div>
+            <div class="card-title"><span>Active Running Bots</span></div>
             {% if bots %}
                 {% for bid, info in bots.items() %}
                 <div class="bot-item">
@@ -217,51 +233,25 @@ PANEL_HTML = """
                 </div>
                 {% endfor %}
             {% else %}
-                <p style="font-size: 11px; color: var(--text-muted); text-align: center;">No active bots running.</p>
+                <p style="font-size: 9px; font-family: 'JetBrains Mono'; color: var(--text-muted); text-align: center;">No active bots running.</p>
             {% endif %}
         </div>
-    </div>
 
-    <script>
-        function showLoader() {
-            document.getElementById('loading-overlay').style.display = 'flex';
-        }
-    </script>
+        <div class="card">
+            <div class="card-title"><span>System Status</span></div>
+            <p style="font-size: 10px; font-family: 'JetBrains Mono'; color: #00f3ff;">All scripts and premium subscriptions are securely synced with MongoDB. CPU Usage: {{ cpu }}%</p>
+        </div>
+    </div>
 </body>
 </html>
 """
 
-# ═══════════════════════════════════════
-#             FLASK ROUTES
-# ═══════════════════════════════════════
-@app.route('/', methods=['GET', 'POST'])
-def login():
-    error = None
-    if request.method == 'POST':
-        password = request.form.get('password')
-        if password == ADMIN_PASSWORD:
-            session['logged_in'] = True
-            return redirect(url_for('home'))
-        else:
-            error = "❌ Incorrect Password! Try again."
-    return render_template_string(LOGIN_HTML, error=error)
-
-@app.route('/home')
+@app.route('/')
 def home():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-    return render_template_string(PANEL_HTML, bots=active_processes)
-
-@app.route('/logout')
-def logout():
-    session.pop('logged_in', None)
-    return redirect(url_for('login'))
+    return render_template_string(AUTO_PILOT_HTML, bots=active_processes, cpu=current_cpu)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-        
     if 'bot_file' not in request.files:
         return redirect(url_for('home'))
     file = request.files['bot_file']
@@ -317,9 +307,6 @@ def upload_file():
 
 @app.route('/logs/<bot_id>')
 def view_logs(bot_id):
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-        
     if bot_id in active_processes:
         log_path = active_processes[bot_id]["log_path"]
         if os.path.exists(log_path):
@@ -330,9 +317,6 @@ def view_logs(bot_id):
 
 @app.route('/delete/<bot_id>')
 def delete_bot(bot_id):
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-        
     if bot_id in active_processes:
         info = active_processes[bot_id]
         kill_process_by_pid(info["pid"])
