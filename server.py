@@ -179,13 +179,38 @@ AUTO_PILOT_HTML = """
         }
         
         input[type="file"] { color: var(--text-muted); font-size: 10px; width: 100%; cursor: pointer; }
+        input[type="file"]::file-selector-button {
+            background: rgba(0, 243, 255, 0.12);
+            color: var(--neon-cyan);
+            border: 1px solid rgba(0, 243, 255, 0.4);
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-right: 10px;
+            box-shadow: 0 0 10px rgba(0,243,255,0.2);
+            transition: all 0.2s ease;
+        }
+        input[type="file"]::file-selector-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 25px var(--neon-cyan);
+            filter: brightness(1.4);
+        }
         
         .btn { 
             background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
             color: #050814; border: none; padding: 14px; width: 100%; 
             font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; 
             border-radius: 10px; cursor: pointer; letter-spacing: 1px;
-            box-shadow: 0 0 12px rgba(0,243,255,0.4);
+            box-shadow: 0 0 15px rgba(0,243,255,0.4);
+            transition: all 0.2s ease;
+        }
+        .btn:active {
+            transform: scale(0.97);
+            box-shadow: 0 0 30px #ffffff, 0 0 60px var(--neon-cyan);
+            filter: brightness(1.3);
         }
 
         .refresh-btn { 
@@ -205,18 +230,28 @@ AUTO_PILOT_HTML = """
         .st-off { color: var(--danger); font-size: 9px; background: rgba(255, 0, 85, 0.15); padding: 3px 8px; border-radius: 6px; font-family: 'Orbitron', sans-serif; border: 1px solid rgba(255, 0, 85, 0.4); }
         
         .actions { display: flex; gap: 6px; margin-bottom: 6px; }
-        .act-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; }
+        .act-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; transition: all 0.2s ease; }
         
-        /* Exact Screenshot Matching Button Colors */
         .b-start { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.6); }
+        .b-start:active { transform: scale(0.95); box-shadow: 0 0 20px var(--neon-cyan); background: rgba(0,243,255,0.2); }
+
         .b-stop { background: #070e21; color: var(--danger); border: 1px solid rgba(255, 0, 85, 0.6); }
+        .b-stop:active { transform: scale(0.95); box-shadow: 0 0 20px var(--danger); background: rgba(255,0,85,0.2); }
+
         .b-del { background: #070e21; color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.6); }
+        .b-del:active { transform: scale(0.95); box-shadow: 0 0 20px var(--warning); background: rgba(245,158,11,0.2); }
         
         .secondary-actions { display: flex; gap: 6px; }
-        .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; text-align: center; }
+        .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; text-align: center; transition: all 0.2s ease; }
+        
         .b-edit { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.6); }
+        .b-edit:active { transform: scale(0.95); box-shadow: 0 0 20px var(--neon-cyan); background: rgba(0,243,255,0.2); }
+
         .b-log { background: #070e21; color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.6); }
+        .b-log:active { transform: scale(0.95); box-shadow: 0 0 20px var(--neon-purple); background: rgba(176,0,255,0.2); }
+
         .b-upload { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.6); }
+        .b-upload:active { transform: scale(0.95); box-shadow: 0 0 20px var(--neon-cyan); background: rgba(0,243,255,0.2); }
 
         #editorModal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
