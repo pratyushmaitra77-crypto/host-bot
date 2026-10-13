@@ -207,16 +207,16 @@ AUTO_PILOT_HTML = """
         .actions { display: flex; gap: 6px; margin-bottom: 6px; }
         .act-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; }
         
-        /* Exact Colors matching your screenshot */
-        .b-start { background: rgba(11, 19, 41, 0.9); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
-        .b-stop { background: rgba(11, 19, 41, 0.9); color: var(--danger); border: 1px solid rgba(255, 0, 85, 0.4); }
-        .b-del { background: rgba(11, 19, 41, 0.9); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.4); }
+        /* Exact Screenshot Matching Button Colors */
+        .b-start { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.6); }
+        .b-stop { background: #070e21; color: var(--danger); border: 1px solid rgba(255, 0, 85, 0.6); }
+        .b-del { background: #070e21; color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.6); }
         
         .secondary-actions { display: flex; gap: 6px; }
         .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; text-align: center; }
-        .b-edit { background: rgba(11, 19, 41, 0.9); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
-        .b-log { background: rgba(11, 19, 41, 0.9); color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.4); }
-        .b-upload { background: rgba(11, 19, 41, 0.9); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
+        .b-edit { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.6); }
+        .b-log { background: #070e21; color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.6); }
+        .b-upload { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.6); }
 
         #editorModal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
