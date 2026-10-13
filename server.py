@@ -111,42 +111,6 @@ AUTO_PILOT_HTML = """
 
         .ring-info h2 { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900; color: var(--neon-cyan); }
         .ring-info p { font-size: 8px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
-        
-        .status-badge-wrapper {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(0, 243, 255, 0.08);
-            padding: 5px 10px;
-            border-radius: 20px;
-            border: 1px solid rgba(0, 243, 255, 0.3);
-        }
-        .online-dot {
-            width: 6px;
-            height: 6px;
-            background-color: var(--neon-cyan);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--neon-cyan);
-        }
-        .badge { font-size: 8px; color: var(--neon-cyan); font-weight: 700; font-family: 'Orbitron', sans-serif; }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        .stat-box {
-            background: rgba(11, 19, 41, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            padding: 10px 14px;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-        }
-        .stat-label { font-size: 8px; font-family: 'Orbitron', sans-serif; color: var(--text-muted); }
-        .stat-val { font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #fff; margin-top: 2px; }
 
         .resource-card {
             background: rgba(11, 19, 41, 0.85);
@@ -214,32 +178,14 @@ AUTO_PILOT_HTML = """
             margin-bottom: 10px;
         }
         
-        input[type="file"] { color: var(--text-muted); font-size: 11px; width: 100%; cursor: pointer; }
-        input[type="file"]::file-selector-button {
-            background: rgba(0, 243, 255, 0.12);
-            color: var(--neon-cyan);
-            border: 1px solid rgba(0, 243, 255, 0.4);
-            padding: 8px 14px;
-            border-radius: 6px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 9px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-right: 10px;
-        }
+        input[type="file"] { color: var(--text-muted); font-size: 10px; width: 100%; cursor: pointer; }
         
         .btn { 
             background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
             color: #050814; border: none; padding: 14px; width: 100%; 
             font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; 
             border-radius: 10px; cursor: pointer; letter-spacing: 1px;
-            position: relative; overflow: hidden; transition: all 0.2s ease;
-        }
-        
-        .btn:active {
-            transform: scale(0.97);
-            box-shadow: 0 0 25px 5px #ffffff, 0 0 50px var(--neon-cyan);
-            filter: brightness(1.3);
+            box-shadow: 0 0 12px rgba(0,243,255,0.4);
         }
 
         .refresh-btn { 
@@ -253,39 +199,22 @@ AUTO_PILOT_HTML = """
             padding: 12px; margin-bottom: 10px; 
             border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.06);
         }
-        .instance-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 11px; font-weight: 600; color: #fff; font-family: 'JetBrains Mono', monospace; }
+        .instance-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; font-weight: 600; color: #fff; font-family: 'JetBrains Mono', monospace; }
         
-        .metrics-row {
-            display: flex; gap: 8px; margin-bottom: 10px;
-            font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-muted);
-        }
-        .metric-badge { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; }
-
-        .st-on { color: var(--success); font-size: 9px; background: rgba(0, 255, 102, 0.15); padding: 3px 8px; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-weight: 700; border: 1px solid rgba(0, 255, 102, 0.4); }
-        .st-off { color: var(--danger); font-size: 9px; background: rgba(255, 0, 85, 0.15); padding: 3px 8px; border-radius: 6px; font-family: 'Orbitron', sans-serif; font-weight: 700; border: 1px solid rgba(255, 0, 85, 0.4); }
+        .st-on { color: var(--success); font-size: 9px; background: rgba(0, 255, 102, 0.15); padding: 3px 8px; border-radius: 6px; font-family: 'Orbitron', sans-serif; border: 1px solid rgba(0, 255, 102, 0.4); }
+        .st-off { color: var(--danger); font-size: 9px; background: rgba(255, 0, 85, 0.15); padding: 3px 8px; border-radius: 6px; font-family: 'Orbitron', sans-serif; border: 1px solid rgba(255, 0, 85, 0.4); }
         
         .actions { display: flex; gap: 6px; margin-bottom: 6px; }
-        .act-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; }
+        .act-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; }
         
         .b-start { background: rgba(0, 255, 102, 0.15); color: var(--success); border: 1px solid rgba(0, 255, 102, 0.4); }
         .b-stop { background: rgba(251, 191, 36, 0.15); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.4); }
         .b-del { background: rgba(255, 0, 85, 0.15); color: var(--danger); border: 1px solid rgba(255, 0, 85, 0.4); }
         
         .secondary-actions { display: flex; gap: 6px; }
-        .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; }
+        .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; }
         .b-edit { background: rgba(0, 243, 255, 0.15); color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.4); }
         .b-log { background: rgba(176, 0, 255, 0.2); color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.4); }
-        
-        .terminal-box { 
-            background: #02050e; border: 1px solid rgba(0, 243, 255, 0.35); 
-            padding: 12px; height: 180px; overflow-y: auto; 
-            font-family: 'JetBrains Mono', monospace; font-size: 10px; 
-            color: var(--neon-cyan); white-space: pre-wrap; border-radius: 8px; margin-top: 8px; line-height: 1.4;
-        }
-        .term-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-        .term-actions { display: flex; gap: 4px; }
-        .control-btn { background: rgba(255, 255, 255, 0.1); color: #ccc; border: 1px solid rgba(255, 255, 255, 0.2); padding: 3px 8px; font-size: 9px; border-radius: 6px; cursor: pointer; font-family: 'Orbitron'; }
-        .close-term { background: rgba(255, 0, 85, 0.2); color: #ff0055; border: 1px solid rgba(255, 0, 85, 0.4); padding: 3px 8px; font-size: 9px; border-radius: 6px; cursor: pointer; font-family: 'Orbitron'; }
 
         #editorModal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -297,14 +226,11 @@ AUTO_PILOT_HTML = """
             border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.35);
             display: flex; flex-direction: column; padding: 16px;
         }
-        .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .editor-title { font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 700; color: #fff; }
         .code-textarea {
             flex: 1; background: #02050e; border: 1px solid rgba(255, 255, 255, 0.1);
             color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace; font-size: 11px;
             padding: 12px; border-radius: 8px; resize: none; outline: none;
         }
-        .editor-footer { display: flex; gap: 8px; margin-top: 10px; }
 
         .empty { color: var(--text-muted); font-size: 11px; text-align: center; padding: 20px; font-family: 'JetBrains Mono', monospace; }
         
@@ -329,55 +255,27 @@ AUTO_PILOT_HTML = """
             </div>
             <div class="ring-info">
                 <h2>NEXUS-X v6</h2>
-                <p>TELEGRAM BOT CORE // STABLE</p>
-            </div>
-            <div class="status-badge-wrapper">
-                <div class="online-dot"></div>
-                <span class="badge">ONLINE</span>
-            </div>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-box">
-                <span class="stat-label">ENGINE MODE</span>
-                <span class="stat-val" style="color: var(--neon-cyan);">STABLE</span>
-            </div>
-            <div class="stat-box">
-                <span class="stat-label">LATENCY</span>
-                <span class="stat-val" style="color: var(--neon-purple);">8ms [OK]</span>
+                <p>TELEGRAM BOT CORE // ACTIVE</p>
             </div>
         </div>
 
         <div class="resource-card">
             <div class="resource-title">
-                <span>SYSTEM HARDWARE MONITOR</span>
+                <span>HARDWARE MONITOR</span>
                 <span style="color: var(--neon-cyan);">LIVE</span>
             </div>
             <div class="res-item">
-                <div class="res-info">
-                    <span>CPU USAGE</span>
-                    <span id="cpuText">0%</span>
-                </div>
+                <div class="res-info"><span>CPU</span><span id="cpuText">0%</span></div>
                 <div class="res-bar-bg"><div id="cpuBar" class="res-bar-fill"></div></div>
             </div>
             <div class="res-item" style="margin-top: 8px;">
-                <div class="res-info">
-                    <span>RAM USAGE</span>
-                    <span id="ramText">0 MB / 0 MB</span>
-                </div>
+                <div class="res-info"><span>RAM</span><span id="ramText">0 MB / 0 MB</span></div>
                 <div class="res-bar-bg"><div id="ramBar" class="res-bar-fill"></div></div>
-            </div>
-            <div class="res-item" style="margin-top: 8px;">
-                <div class="res-info">
-                    <span>STORAGE USAGE</span>
-                    <span id="diskText">0 GB / 0 GB</span>
-                </div>
-                <div class="res-bar-bg"><div id="diskBar" class="res-bar-fill"></div></div>
             </div>
         </div>
         
         <div class="card">
-            <div class="card-title"><span>⚡ DEPLOY BOT & REQUIREMENTS</span></div>
+            <div class="card-title"><span>⚡ DEPLOY BOT</span></div>
             <div class="file-upload-wrapper">
                 <label style="font-size:9px; color:var(--neon-cyan); display:block; margin-bottom:5px;">📁 Python Script (.py):</label>
                 <input type="file" id="botFile" accept=".py">
@@ -386,46 +284,33 @@ AUTO_PILOT_HTML = """
                 <label style="font-size:9px; color:var(--neon-cyan); display:block; margin-bottom:5px;">📦 Requirements (requirements.txt):</label>
                 <input type="file" id="reqFile" accept=".txt">
             </div>
-            <button class="btn" onclick="deployBot()">UPLOAD & COMPILE SCRIPT</button>
+            <button class="btn" onclick="deployBot()">🚀 Upload & Start Bot</button>
         </div>
         
         <div class="card">
             <div class="card-title">
-                <span>📂 ACTIVE INSTANCES</span>
+                <span>📂 ACTIVE BOTS</span>
                 <button class="refresh-btn" onclick="loadInstances()">REFRESH</button>
             </div>
-            <div id="instanceList" class="empty">Scanning storage core...</div>
-        </div>
-
-        <div class="card" id="terminalCard" style="display:none;">
-            <div class="term-header">
-                <span id="termFileName" style="font-size:10px; font-weight:700; color:#fff; font-family:'Orbitron';">LIVE LOGS</span>
-                <div class="term-actions">
-                    <button class="control-btn" id="minBtn" onclick="toggleMinimize()">MIN</button>
-                    <button class="close-term" onclick="closeTerminal()">CLOSE</button>
-                </div>
-            </div>
-            <div id="terminalOutput" class="terminal-box">Waiting for stream...</div>
+            <div id="instanceList" class="empty">No active bots uploaded.</div>
         </div>
     </div>
 
     <div id="editorModal">
         <div class="editor-content">
-            <div class="editor-header">
-                <span id="editorFileName" class="editor-title">EDIT CODE</span>
-                <button class="close-term" onclick="closeEditor()">CLOSE</button>
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
+                <span id="editorFileName" style="font-family:'Orbitron'; font-size:11px; color:var(--neon-cyan);">EDIT CODE</span>
+                <button onclick="closeEditor()" style="background:var(--danger); color:#fff; border:none; padding:5px 10px; border-radius:6px; font-family:'Orbitron'; font-weight:bold; cursor:pointer;">X</button>
             </div>
             <textarea id="codeTextarea" class="code-textarea" spellcheck="false"></textarea>
-            <div class="editor-footer">
-                <button class="btn" style="padding: 10px;" onclick="saveCode()">💾 SAVE & APPLY CODE</button>
-            </div>
+            <button class="btn" style="margin-top:10px;" onclick="saveCode()">💾 SAVE CODE</button>
         </div>
     </div>
 
     <div id="toast">SYSTEM READY</div>
     <script>
         const KEY = 'admin123';
-        let activeLogFile = null, logInterval = null, isMinimized = false, editingFile = null;
+        let editingFile = null;
 
         function showToast(msg) {
             const t = document.getElementById('toast');
@@ -438,15 +323,10 @@ AUTO_PILOT_HTML = """
                 const res = await fetch(`/system_stats?key=${KEY}`);
                 const data = await res.json();
                 if(data.error) return;
-
                 document.getElementById('cpuText').innerText = data.cpu_percent + '%';
                 document.getElementById('cpuBar').style.width = data.cpu_percent + '%';
-
-                document.getElementById('ramText').innerText = `${data.ram_used} MB / ${data.ram_total} MB (${data.ram_percent}%)`;
+                document.getElementById('ramText').innerText = `${data.ram_used} MB / ${data.ram_total} MB`;
                 document.getElementById('ramBar').style.width = data.ram_percent + '%';
-
-                document.getElementById('diskText').innerText = `${data.disk_used} GB / ${data.disk_total} GB (${data.disk_percent}%)`;
-                document.getElementById('diskBar').style.width = data.disk_percent + '%';
             } catch(e) {}
         }
 
@@ -470,7 +350,6 @@ AUTO_PILOT_HTML = """
                 else {
                     showToast(data.message);
                     loadInstances();
-                    if(data.filename) openTerminal(data.filename);
                 }
             } catch(e) { showToast('UPLOAD FAILED'); }
         }
@@ -481,21 +360,16 @@ AUTO_PILOT_HTML = """
                 const data = await res.json();
                 const list = document.getElementById('instanceList');
                 if(!data.bots || data.bots.length === 0) {
-                    list.innerHTML = '<div class="empty">NO SCRIPTS FOUND</div>';
+                    list.innerHTML = '<div class="empty">No active bots uploaded.</div>';
                 } else {
                     list.innerHTML = data.bots.map(b => {
                         const online = b.status === 'ONLINE';
                         return `
                             <div class="instance-item">
                                 <div class="instance-top">
-                                    <span>⚡ ${b.name}</span>
+                                    <span>🤖 ${b.name}</span>
                                     <span class="${online ? 'st-on' : 'st-off'}">${b.status}</span>
                                 </div>
-                                ${online ? `
-                                <div class="metrics-row">
-                                    <span class="metric-badge">CPU: ${b.cpu}</span>
-                                    <span class="metric-badge">RAM: ${b.ram}</span>
-                                </div>` : ''}
                                 <div class="actions">
                                     <button class="act-btn b-start" onclick="actionBot('start', '${b.name}')">START</button>
                                     <button class="act-btn b-stop" onclick="actionBot('stop', '${b.name}')">STOP</button>
@@ -503,7 +377,7 @@ AUTO_PILOT_HTML = """
                                 </div>
                                 <div class="secondary-actions" style="margin-top:6px;">
                                     <button class="sec-btn b-edit" onclick="openEditor('${b.name}')">📝 EDIT</button>
-                                    <button class="sec-btn b-log" onclick="openTerminal('${b.name}')">🖥️ LOGS</button>
+                                    <a href="/logs/${b.name}?key=${KEY}" target="_blank" style="flex:1; text-decoration:none;"><button class="sec-btn b-log" style="width:100%;">🖥️ LOGS</button></a>
                                 </div>
                             </div>
                         `;
@@ -520,10 +394,9 @@ AUTO_PILOT_HTML = """
                 if(data.error) showToast('ERR: ' + data.error);
                 else {
                     showToast(data.message || 'SUCCESS');
-                    openTerminal(filename);
                 }
             } catch(e){ showToast('ACTION FAILED'); }
-            setTimeout(loadInstances, 500);
+            setTimeout(loadInstances, 600);
         }
 
         async function openEditor(filename) {
@@ -561,50 +434,6 @@ AUTO_PILOT_HTML = """
                     loadInstances();
                 }
             } catch(e) { showToast('SAVE FAILED'); }
-        }
-
-        function openTerminal(filename) {
-            activeLogFile = filename;
-            document.getElementById('terminalCard').style.display = 'block';
-            if(isMinimized) toggleMinimize();
-            document.getElementById('termFileName').innerText = 'LOGS: ' + filename;
-            fetchLog();
-            if(logInterval) clearInterval(logInterval);
-            logInterval = setInterval(fetchLog, 6000);
-        }
-
-        function toggleMinimize() {
-            const termBox = document.getElementById('terminalOutput');
-            const minBtn = document.getElementById('minBtn');
-            isMinimized = !isMinimized;
-            if(isMinimized) {
-                termBox.style.display = 'none';
-                minBtn.innerText = 'MAX';
-            } else {
-                termBox.style.display = 'block';
-                minBtn.innerText = 'MIN';
-                termBox.scrollTop = termBox.scrollHeight;
-            }
-        }
-
-        function closeTerminal() {
-            document.getElementById('terminalCard').style.display = 'none';
-            if(logInterval) clearInterval(logInterval);
-            activeLogFile = null;
-            isMinimized = false;
-            document.getElementById('terminalOutput').style.display = 'block';
-            document.getElementById('minBtn').innerText = 'MIN';
-        }
-
-        async function fetchLog() {
-            if(!activeLogFile || isMinimized) return;
-            try {
-                const res = await fetch(`/get_log/${activeLogFile}?key=${KEY}`);
-                const data = await res.json();
-                const term = document.getElementById('terminalOutput');
-                term.innerText = data.log || 'No logs...';
-                term.scrollTop = term.scrollHeight;
-            } catch(e) {}
         }
 
         loadInstances();
@@ -725,10 +554,6 @@ def system_stats():
     ram_total = 4096.0
     ram_used = 1240.5
     ram_percent = 30.2
-    
-    disk_total = 64.0
-    disk_used = 18.5
-    disk_percent = 28.9
 
     try:
         mem_total_val, mem_free_val, mem_avail_val = 0, 0, 0
@@ -749,26 +574,11 @@ def system_stats():
     except:
         pass
 
-    try:
-        st = os.statvfs(os.getcwd())
-        d_total = st.f_blocks * st.f_frsize
-        d_free = st.f_bavail * st.f_frsize
-        d_used = d_total - d_free
-        if d_total > 0:
-            disk_total = round(d_total / (1024**3), 2)
-            disk_used = round(d_used / (1024**3), 2)
-            disk_percent = round((d_used / d_total) * 100, 1)
-    except:
-        pass
-
     return jsonify({
         'cpu_percent': cpu_percent,
         'ram_total': ram_total,
         'ram_used': ram_used,
-        'ram_percent': ram_percent,
-        'disk_total': disk_total,
-        'disk_used': disk_used,
-        'disk_percent': disk_percent
+        'ram_percent': ram_percent
     })
 
 @app.route('/upload', methods=['POST'])
@@ -796,8 +606,9 @@ def upload_file():
                 req_file.save(req_filepath)
         
         threading.Thread(target=background_setup, args=(filepath, filename, req_filepath), daemon=True).start()
+        start_bot_process(filename)
         
-        return jsonify({'message': f'Uploaded {filename}!', 'filename': filename})
+        return jsonify({'message': f'Uploaded & Started {filename}!', 'filename': filename})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -836,8 +647,6 @@ def list_bots():
     for f in sorted(files):
         if f.endswith('.py'):
             is_running = False
-            cpu_usage = "0%"
-            ram_usage = "0 MB"
             if f in active_processes:
                 pid = active_processes[f].get('pid')
                 if pid and psutil.pid_exists(pid):
@@ -845,12 +654,10 @@ def list_bots():
                         p = psutil.Process(pid)
                         if p.is_running() and p.status() != psutil.STATUS_ZOMBIE:
                             is_running = True
-                            cpu_usage = f"{p.cpu_percent(interval=0.0):.1f}%"
-                            ram_usage = f"{p.memory_info().rss / (1024 * 1024):.1f} MB"
                         else: dead_keys.append(f)
                     except: dead_keys.append(f)
                 else: dead_keys.append(f)
-            bots.append({'name': f, 'status': 'ONLINE' if is_running else 'OFFLINE', 'cpu': cpu_usage, 'ram': ram_usage})
+            bots.append({'name': f, 'status': 'ONLINE' if is_running else 'OFFLINE'})
     for dk in dead_keys:
         if desired_states.get(dk) == False:
             active_processes.pop(dk, None)
@@ -876,21 +683,15 @@ def start_bot(filename):
     else:
         return jsonify({'error': 'Failed to start'}), 500
 
-@app.route('/get_log/<filename>', methods=['GET'])
-def get_log(filename):
-    if request.args.get('key') != DEFAULT_KEY: return jsonify({'error': 'Unauthorized'}), 403
+@app.route('/logs/<filename>', methods=['GET'])
+def logs(filename):
+    if request.args.get('key') != DEFAULT_KEY: return "Unauthorized", 403
     log_path = os.path.join(UPLOAD_FOLDER, filename + '.log')
     if os.path.exists(log_path):
-        try:
-            with open(log_path, 'rb') as lf:
-                lf.seek(0, 2)
-                filesize = lf.tell()
-                lf.seek(max(0, filesize - 15000), 0)
-                content = lf.read().decode('utf-8', errors='ignore')
-        except:
-            content = "Error reading log..."
-        return jsonify({'log': content})
-    return jsonify({'log': 'No logs found.'})
+        with open(log_path, 'r', encoding='utf-8', errors='ignore') as lf:
+            content = lf.read()
+        return f"<pre style='background:#02050e;color:#00f3ff;padding:16px;font-family:monospace;font-size:11px;'>{content}</pre>"
+    return "No logs available."
 
 @app.route('/stop/<filename>', methods=['POST'])
 def stop_bot(filename):
