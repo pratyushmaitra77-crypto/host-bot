@@ -15,6 +15,7 @@ try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     db = client["nexus_panel_storage"]
     scripts_collection = db["saved_scripts"]
+    premium_collection = db["premium_users"]
     print("✅ Connected to MongoDB successfully!")
 except Exception as e:
     print(f"❌ MongoDB Connection Error: {e}")
@@ -23,7 +24,7 @@ UPLOAD_FOLDER = os.path.join(os.getcwd(), 'hosted_bots')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 active_processes = {}
-ADMIN_PASSWORD = "admin123"  # Apnar pannel er admin password ekhane change kore nite paren
+ADMIN_PASSWORD = "admin123"
 
 def kill_process_by_pid(pid):
     try:
@@ -90,7 +91,7 @@ def restore_and_launch_bots():
 restore_and_launch_bots()
 
 # ═══════════════════════════════════════
-#          HTML TEMPLATES (WITH LOGIN & SPINNER)
+#          HTML TEMPLATES
 # ═══════════════════════════════════════
 LOGIN_HTML = """
 <!DOCTYPE html>
@@ -116,7 +117,7 @@ LOGIN_HTML = """
         <h2>SECURE LOGIN</h2>
         {% if error %}<p class="error">{{ error }}</p>{% endif %}
         <form method="POST">
-            <input type="password" name="password" placeholder="Enter Admin Password" required autofocus>
+            <input type="password" name="password" placeholder="Enter Admin Password (admin123)" required autofocus>
             <button type="submit" class="btn">Login to Panel</button>
         </form>
     </div>
@@ -155,7 +156,6 @@ PANEL_HTML = """
         input[type="file"] { width: 100%; padding: 10px; background: #050814; border: 1px dashed rgba(0,243,255,0.4); border-radius: 8px; color: var(--text-main); margin-bottom: 12px; font-size: 12px; }
         .btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #050814; border: none; padding: 12px; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; border-radius: 8px; cursor: pointer; text-transform: uppercase; display: flex; justify-content: center; align-items: center; gap: 8px; }
         
-        /* Loading Spinner (Chorka Ghura) */
         .spinner { width: 14px; height: 14px; border: 2px solid #050814; border-top: 2px solid #ffffff; border-radius: 50%; animation: spin 0.8s linear infinite; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -295,7 +295,7 @@ def upload_file():
                 "pid": process.pid,
                 "filename": filename,
                 "file_path": file_path,
-                "log_log": log_path,
+                "log_path": log_path,
                 "time": time.strftime("%Y-%m-%d %H:%M:%S")
             }
         except Exception as e:
@@ -309,7 +309,7 @@ def view_logs(bot_id):
         return redirect(url_for('login'))
         
     if bot_id in active_processes:
-        log_path = active_processes[bot_id]["log_log"]
+        log_path = active_processes[bot_id]["log_path"]
         if os.path.exists(log_path):
             with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
                 logs = f.read()
@@ -333,4 +333,5 @@ def delete_bot(bot_id):
 
 if __name__ == '__main__':
     import string
-    serve(app, host='0.0.0.0', port=5000)
+    # Hugging Face ba Render-er jonno port 7860 use kora hoyeche
+    serve(app, host='0.0.0.0', port=7860)
