@@ -25,7 +25,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 active_processes = {}
 
-# Default admin password management via DB or fallback
 def get_admin_password():
     try:
         cfg = config_collection.find_one({"key": "admin_pass"})
@@ -112,27 +111,15 @@ def restore_and_launch_bots():
 restore_and_launch_bots()
 
 # ═══════════════════════════════════════
-#     SYSTEM MONITOR (CPU, RAM, STORAGE)
+#     SYSTEM MONITOR (CPU)
 # ═══════════════════════════════════════
 current_cpu = 5.0
-current_ram = 25.0
-current_storage = 12.5
 
 def system_monitor_loop():
-    global current_cpu, current_ram, current_storage
+    global current_cpu
     while True:
         try:
             current_cpu = round(psutil.cpu_percent(interval=2), 1)
-            mem = psutil.virtual_memory()
-            current_ram = round(mem.percent, 1)
-            
-            total_size = 0
-            for dirpath, dirnames, filenames in os.walk(UPLOAD_FOLDER):
-                for f in filenames:
-                    fp = os.path.join(dirpath, f)
-                    if os.path.exists(fp):
-                        total_size += os.path.getsize(fp)
-            current_storage = round(total_size / (1024 * 1024), 2)
         except Exception:
             pass
         time.sleep(3)
@@ -140,7 +127,7 @@ def system_monitor_loop():
 threading.Thread(target=system_monitor_loop, daemon=True).start()
 
 # ═══════════════════════════════════════
-#          HTML TEMPLATES (WITH HOME & PROFILE)
+#          HTML TEMPLATES
 # ═══════════════════════════════════════
 LOGIN_HTML = """
 <!DOCTYPE html>
@@ -215,15 +202,14 @@ PANEL_HTML = """
         .card { background: var(--card-bg); padding: 16px; margin-bottom: 16px; border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         .card-title { font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; }
         
-        label { font-size: 9px; color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace; display: block; margin-bottom: 4px; }
-        input[type="file"] { width: 100%; padding: 8px; background: #050814; border: 1px dashed rgba(0,243,255,0.4); border-radius: 8px; color: var(--text-main); margin-bottom: 10px; font-size: 10px; }
+        input[type="file"] { width: 100%; padding: 10px; background: #050814; border: 1px dashed rgba(0,243,255,0.4); border-radius: 8px; color: var(--text-main); margin-bottom: 12px; font-size: 11px; }
         
         .btn-deploy { 
             background: linear-gradient(135deg, #00f3ff, #b000ff, #ff007f); 
             background-size: 200% 200%;
             color: #ffffff; 
             border: none; 
-            padding: 12px; 
+            padding: 14px; 
             width: 100%; 
             font-family: 'Orbitron', sans-serif; 
             font-weight: 900; 
@@ -234,11 +220,6 @@ PANEL_HTML = """
             animation: gradientShift 4s ease infinite;
         }
         @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-
-        .monitor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
-        .metric-box { background: rgba(5, 8, 20, 0.7); padding: 8px; border-radius: 8px; border: 1px solid rgba(0,243,255,0.1); }
-        .metric-box h3 { font-family: 'Orbitron', sans-serif; font-size: 10px; color: var(--neon-cyan); margin-top: 3px; }
-        .metric-box span { font-size: 7px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
 
         .bot-item { background: rgba(5, 8, 20, 0.8); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--success); }
         .bot-info h4 { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text-main); }
@@ -251,7 +232,6 @@ PANEL_HTML = """
         .btn-del { background: var(--danger); color: #fff; }
         .btn-log { background: #333; color: var(--neon-cyan); border: 1px solid var(--neon-cyan); }
 
-        /* Bottom Navigation Bar (Home & Profile) */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: #070d21; border-top: 1px solid rgba(0, 243, 255, 0.2);
@@ -266,7 +246,6 @@ PANEL_HTML = """
 </head>
 <body>
     <div class="container">
-        <!-- Header with Chorka -->
         <div class="ring-header">
             <div class="ring-info">
                 <h2>NEXUS-X v6</h2>
@@ -275,40 +254,14 @@ PANEL_HTML = """
             <div class="spinner-wheel"></div>
         </div>
 
-        <!-- System Status Monitor -->
-        <div class="card">
-            <div class="card-title"><span>System Status</span></div>
-            <div class="monitor-grid">
-                <div class="metric-box">
-                    <span>CPU</span>
-                    <h3>{{ cpu }}%</h3>
-                </div>
-                <div class="metric-box">
-                    <span>RAM</span>
-                    <h3>{{ ram }}%</h3>
-                </div>
-                <div class="metric-box">
-                    <span>STORAGE</span>
-                    <h3>{{ storage }} MB</h3>
-                </div>
-            </div>
-        </div>
-
-        <!-- Upload & Run Hub -->
         <div class="card">
             <div class="card-title"><span>Upload & Run Bot</span></div>
             <form action="/upload" method="POST" enctype="multipart/form-data">
-                <label>📁 Select Script (.py / .js / .php / .zip)</label>
                 <input type="file" name="bot_file" required>
-                
-                <label>📦 Optional Requirements.txt</label>
-                <input type="file" name="req_file">
-                
                 <button type="submit" class="btn-deploy">🚀 Upload & Run</button>
             </form>
         </div>
 
-        <!-- Active Bots -->
         <div class="card">
             <div class="card-title"><span>Active Running Bots</span></div>
             {% if bots %}
@@ -333,9 +286,13 @@ PANEL_HTML = """
                 <p style="font-size: 9px; font-family: 'JetBrains Mono'; color: var(--text-muted); text-align: center;">No active bots running.</p>
             {% endif %}
         </div>
+
+        <div class="card">
+            <div class="card-title"><span>System Status</span></div>
+            <p style="font-size: 10px; font-family: 'JetBrains Mono'; color: #00f3ff;">All scripts and premium subscriptions are securely synced with MongoDB. CPU Usage: {{ cpu }}%</p>
+        </div>
     </div>
 
-    <!-- Bottom Navigation Bar -->
     <div class="bottom-nav">
         <a href="/home" class="nav-item active">
             🏠 <span>HOME</span>
@@ -399,7 +356,6 @@ PROFILE_HTML = """
         </div>
     </div>
 
-    <!-- Bottom Navigation Bar -->
     <div class="bottom-nav">
         <a href="/home" class="nav-item">
             🏠 <span>HOME</span>
@@ -431,7 +387,7 @@ def login():
 def home():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    return render_template_string(PANEL_HTML, bots=active_processes, cpu=current_cpu, ram=current_ram, storage=current_storage)
+    return render_template_string(PANEL_HTML, bots=active_processes, cpu=current_cpu)
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
@@ -465,16 +421,6 @@ def upload_file():
     if file.filename == '':
         return redirect(url_for('home'))
     
-    req_file = request.files.get('req_file')
-    if req_file and req_file.filename != '':
-        req_filename = secure_filename(req_file.filename)
-        req_path = os.path.join(UPLOAD_FOLDER, req_filename)
-        req_file.save(req_path)
-        try:
-            subprocess.run([sys.executable, "-m", "pip", "install", "-r", req_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
-
     filename = secure_filename(file.filename)
     if filename.endswith(('.py', '.js', '.php', '.zip')):
         file_path = os.path.join(UPLOAD_FOLDER, filename)
