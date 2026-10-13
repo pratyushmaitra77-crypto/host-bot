@@ -89,6 +89,7 @@ AUTO_PILOT_HTML = """
             display: flex;
             align-items: center;
             gap: 16px;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
         }
 
         .ring-avatar {
@@ -102,6 +103,7 @@ AUTO_PILOT_HTML = """
             justify-content: center;
             flex-shrink: 0;
             animation: spinRing 6s linear infinite;
+            box-shadow: 0 0 10px var(--neon-cyan);
         }
 
         @keyframes spinRing {
@@ -109,15 +111,16 @@ AUTO_PILOT_HTML = """
             100% { transform: rotate(360deg); }
         }
 
-        .ring-info h2 { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900; color: var(--neon-cyan); }
+        .ring-info h2 { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900; color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0,243,255,0.5); }
         .ring-info p { font-size: 8px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
 
         .resource-card {
             background: rgba(11, 19, 41, 0.85);
-            border: 1px solid rgba(0, 243, 255, 0.2);
+            border: 1px solid rgba(0, 243, 255, 0.25);
             padding: 14px;
             border-radius: 14px;
             margin-bottom: 16px;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.08);
         }
         .resource-title {
             font-family: 'Orbitron', sans-serif;
@@ -152,6 +155,7 @@ AUTO_PILOT_HTML = """
             background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
             border-radius: 3px;
             transition: width 0.4s ease;
+            box-shadow: 0 0 8px var(--neon-cyan);
         }
 
         .card { 
@@ -159,7 +163,8 @@ AUTO_PILOT_HTML = """
             padding: 16px; 
             margin-bottom: 16px; 
             border-radius: 14px; 
-            border: 1px solid rgba(0, 243, 255, 0.15);
+            border: 1px solid rgba(0, 243, 255, 0.25);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
         }
 
         .card-title { 
@@ -171,18 +176,19 @@ AUTO_PILOT_HTML = """
         
         .file-upload-wrapper {
             background: #040814;
-            border: 2px dashed rgba(0, 243, 255, 0.3);
+            border: 2px dashed rgba(0, 243, 255, 0.4);
             padding: 12px;
             border-radius: 10px;
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
+            box-shadow: inset 0 0 10px rgba(0,243,255,0.05);
         }
         
         input[type="file"] { color: var(--text-muted); font-size: 10px; width: 100%; cursor: pointer; }
         input[type="file"]::file-selector-button {
-            background: rgba(0, 243, 255, 0.12);
+            background: rgba(0, 243, 255, 0.15);
             color: var(--neon-cyan);
-            border: 1px solid rgba(0, 243, 255, 0.4);
+            border: 1px solid rgba(0, 243, 255, 0.6);
             padding: 8px 14px;
             border-radius: 6px;
             font-family: 'Orbitron', sans-serif;
@@ -190,7 +196,7 @@ AUTO_PILOT_HTML = """
             font-weight: 700;
             cursor: pointer;
             margin-right: 10px;
-            box-shadow: 0 0 10px rgba(0,243,255,0.2);
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.3);
             transition: all 0.2s ease;
         }
         input[type="file"]::file-selector-button:active {
@@ -204,69 +210,78 @@ AUTO_PILOT_HTML = """
             color: #050814; border: none; padding: 14px; width: 100%; 
             font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; 
             border-radius: 10px; cursor: pointer; letter-spacing: 1px;
-            box-shadow: 0 0 15px rgba(0,243,255,0.4);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
             transition: all 0.2s ease;
         }
         .btn:active {
             transform: scale(0.97);
-            box-shadow: 0 0 30px #ffffff, 0 0 60px var(--neon-cyan);
-            filter: brightness(1.3);
+            box-shadow: 0 0 35px #ffffff, 0 0 70px var(--neon-cyan);
+            filter: brightness(1.4);
         }
 
         .refresh-btn { 
-            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); 
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.15); 
             color: var(--text-muted); padding: 5px 12px; font-size: 9px; 
             border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; 
+            transition: all 0.2s ease;
+        }
+        .refresh-btn:active {
+            box-shadow: 0 0 10px #fff;
+            color: #fff;
         }
 
         .instance-item { 
             background: #070e21; 
             padding: 12px; margin-bottom: 12px; 
-            border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px; border: 1px solid rgba(0, 243, 255, 0.2);
+            box-shadow: 0 0 10px rgba(0,243,255,0.05);
         }
         .instance-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; font-weight: 600; color: #fff; font-family: 'JetBrains Mono', monospace; }
         
-        .st-on { color: var(--success); font-size: 9px; background: rgba(0, 255, 102, 0.15); padding: 3px 8px; border-radius: 6px; font-family: 'Orbitron', sans-serif; border: 1px solid rgba(0, 255, 102, 0.4); }
-        .st-off { color: var(--danger); font-size: 9px; background: rgba(255, 0, 85, 0.15); padding: 3px 8px; border-radius: 6px; font-family: 'Orbitron', sans-serif; border: 1px solid rgba(255, 0, 85, 0.4); }
+        .st-on { color: var(--success); font-size: 9px; background: rgba(0, 255, 102, 0.15); padding: 3px 8px; border-radius: 6px; font-family: 'Orbitron', sans-serif; border: 1px solid rgba(0, 255, 102, 0.5); box-shadow: 0 0 8px rgba(0,255,102,0.3); }
+        .st-off { color: var(--danger); font-size: 9px; background: rgba(255, 0, 85, 0.15); padding: 3px 8px; border-radius: 6px; font-family: 'Orbitron', sans-serif; border: 1px solid rgba(255, 0, 85, 0.5); box-shadow: 0 0 8px rgba(255,0,85,0.3); }
         
         .actions { display: flex; gap: 6px; margin-bottom: 6px; }
         .act-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; transition: all 0.2s ease; }
         
-        .b-start { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.6); }
-        .b-start:active { transform: scale(0.95); box-shadow: 0 0 20px var(--neon-cyan); background: rgba(0,243,255,0.2); }
+        /* Glowing Neon Interactive Buttons */
+        .b-start { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.8); box-shadow: 0 0 10px rgba(0,243,255,0.2); }
+        .b-start:active { transform: scale(0.94); box-shadow: 0 0 25px var(--neon-cyan); background: rgba(0,243,255,0.25); color: #fff; }
 
-        .b-stop { background: #070e21; color: var(--danger); border: 1px solid rgba(255, 0, 85, 0.6); }
-        .b-stop:active { transform: scale(0.95); box-shadow: 0 0 20px var(--danger); background: rgba(255,0,85,0.2); }
+        .b-stop { background: #070e21; color: var(--danger); border: 1px solid rgba(255, 0, 85, 0.8); box-shadow: 0 0 10px rgba(255,0,85,0.2); }
+        .b-stop:active { transform: scale(0.94); box-shadow: 0 0 25px var(--danger); background: rgba(255,0,85,0.25); color: #fff; }
 
-        .b-del { background: #070e21; color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.6); }
-        .b-del:active { transform: scale(0.95); box-shadow: 0 0 20px var(--warning); background: rgba(245,158,11,0.2); }
+        .b-del { background: #070e21; color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.8); box-shadow: 0 0 10px rgba(245,158,11,0.2); }
+        .b-del:active { transform: scale(0.94); box-shadow: 0 0 25px var(--warning); background: rgba(245,158,11,0.25); color: #fff; }
         
         .secondary-actions { display: flex; gap: 6px; }
         .sec-btn { flex: 1; border: none; padding: 9px; font-size: 9px; font-weight: 700; border-radius: 6px; cursor: pointer; font-family: 'Orbitron', sans-serif; text-transform: uppercase; text-align: center; transition: all 0.2s ease; }
         
-        .b-edit { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.6); }
-        .b-edit:active { transform: scale(0.95); box-shadow: 0 0 20px var(--neon-cyan); background: rgba(0,243,255,0.2); }
+        .b-edit { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.8); box-shadow: 0 0 10px rgba(0,243,255,0.2); }
+        .b-edit:active { transform: scale(0.94); box-shadow: 0 0 25px var(--neon-cyan); background: rgba(0,243,255,0.25); color: #fff; }
 
-        .b-log { background: #070e21; color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.6); }
-        .b-log:active { transform: scale(0.95); box-shadow: 0 0 20px var(--neon-purple); background: rgba(176,0,255,0.2); }
+        .b-log { background: #070e21; color: #d8b4fe; border: 1px solid rgba(176, 0, 255, 0.8); box-shadow: 0 0 10px rgba(176,0,255,0.2); }
+        .b-log:active { transform: scale(0.94); box-shadow: 0 0 25px var(--neon-purple); background: rgba(176,0,255,0.25); color: #fff; }
 
-        .b-upload { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.6); }
-        .b-upload:active { transform: scale(0.95); box-shadow: 0 0 20px var(--neon-cyan); background: rgba(0,243,255,0.2); }
+        .b-upload { background: #070e21; color: var(--neon-cyan); border: 1px solid rgba(0, 243, 255, 0.8); box-shadow: 0 0 10px rgba(0,243,255,0.2); }
+        .b-upload:active { transform: scale(0.94); box-shadow: 0 0 25px var(--neon-cyan); background: rgba(0,243,255,0.25); color: #fff; }
 
         #editorModal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 8, 20, 0.9); z-index: 100;
+            background: rgba(5, 8, 20, 0.92); z-index: 100;
             padding: 16px; align-items: center; justify-content: center;
         }
         .editor-content {
             background: var(--card-bg); width: 100%; max-width: 480px; height: 85vh;
-            border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.35);
+            border-radius: 14px; border: 1px solid rgba(0, 243, 255, 0.4);
             display: flex; flex-direction: column; padding: 16px;
+            box-shadow: 0 0 30px rgba(0,243,255,0.2);
         }
         .code-textarea {
-            flex: 1; background: #02050e; border: 1px solid rgba(255, 255, 255, 0.1);
+            flex: 1; background: #02050e; border: 1px solid rgba(0, 243, 255, 0.2);
             color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace; font-size: 11px;
             padding: 12px; border-radius: 8px; resize: none; outline: none;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
         }
 
         .empty { color: var(--text-muted); font-size: 11px; text-align: center; padding: 20px; font-family: 'JetBrains Mono', monospace; }
@@ -275,7 +290,8 @@ AUTO_PILOT_HTML = """
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); 
             background: #0e1938; color: var(--neon-cyan); padding: 10px 20px; 
             font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; border-radius: 20px; 
-            border: 1px solid rgba(0, 243, 255, 0.4);
+            border: 1px solid rgba(0, 243, 255, 0.6);
+            box-shadow: 0 0 20px rgba(0,243,255,0.4);
             transition: transform 0.2s ease; z-index: 99;
         }
         #toast.show { transform: translateX(-50%) translateY(0); }
@@ -299,7 +315,7 @@ AUTO_PILOT_HTML = """
         <div class="resource-card">
             <div class="resource-title">
                 <span>HARDWARE MONITOR</span>
-                <span style="color: var(--neon-cyan);">LIVE</span>
+                <span style="color: var(--neon-cyan); text-shadow: 0 0 8px var(--neon-cyan);">LIVE</span>
             </div>
             <div class="res-item">
                 <div class="res-info"><span>CPU</span><span id="cpuText">0%</span></div>
@@ -334,8 +350,8 @@ AUTO_PILOT_HTML = """
     <div id="editorModal">
         <div class="editor-content">
             <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
-                <span id="editorFileName" style="font-family:'Orbitron'; font-size:11px; color:var(--neon-cyan);">EDIT CODE</span>
-                <button onclick="closeEditor()" style="background:var(--danger); color:#fff; border:none; padding:5px 10px; border-radius:6px; font-family:'Orbitron'; font-weight:bold; cursor:pointer;">X</button>
+                <span id="editorFileName" style="font-family:'Orbitron'; font-size:11px; color:var(--neon-cyan); text-shadow:0 0 8px var(--neon-cyan);">EDIT CODE</span>
+                <button onclick="closeEditor()" style="background:var(--danger); color:#fff; border:none; padding:5px 10px; border-radius:6px; font-family:'Orbitron'; font-weight:bold; cursor:pointer; box-shadow:0 0 10px var(--danger);">X</button>
             </div>
             <textarea id="codeTextarea" class="code-textarea" spellcheck="false"></textarea>
             <button class="btn" style="margin-top:10px;" onclick="saveCode()">💾 SAVE CODE</button>
