@@ -3,10 +3,10 @@ waitress
 python-telegram-bot
 pyTelegramBotAPI
 telethon
-requests
-python-dotenv
 pyrogram
 aiogram
-aiohttp
+requests
+python-dotenv
 yt-dlp
 beautifulsoup4
+aiohttp
