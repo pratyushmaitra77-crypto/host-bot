@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import threading
 from flask import Flask, render_template_string, request, jsonify
 
 app = Flask(__name__)
@@ -8,10 +9,10 @@ UPLOAD_FOLDER = 'bots'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 bot_processes = {}
-bot_logs = {} # বটের আউটপুট সেভ করার জন্য
+bot_logs = {} # বটের লাইভ লগ সেভ করার জন্য
 
 # ==========================================
-# Premium Indigo/Dark Theme HTML, CSS, JS
+# Premium UI (HTML + CSS + JS)
 # ==========================================
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -19,32 +20,30 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#050505">
-    <title>BotDeploy | Premium</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Nexus Bot Controller</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #050505;
-            --card-bg: rgba(20, 20, 25, 0.8);
-            --border: rgba(255, 255, 255, 0.06);
-            --text-main: #F3F4F6;
-            --text-muted: #9CA3AF;
+            --bg: #09090b;
+            --surface: #18181b;
+            --surface-hover: #27272a;
+            --border: #3f3f46;
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
             
-            /* Premium Purple/Indigo Colors */
-            --primary: #7C3AED; 
-            --primary-hover: #6D28D9;
-            --accent: #06B6D4; 
-            
-            --danger: #EF4444;
-            --success: #10B981;
-            --offline: #374151;
+            /* Premium Colors */
+            --primary: #6366f1; /* Indigo */
+            --primary-glow: rgba(99, 102, 241, 0.3);
+            --success: #10b981;
+            --danger: #ef4444;
+            --cyan: #06b6d4;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         body {
             background-color: var(--bg);
-            background-image: radial-gradient(circle at 50% -10%, rgba(124, 58, 237, 0.15) 0%, #050505 60%);
+            background-image: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #09090b 60%);
             color: var(--text-main);
             min-height: 100vh;
             padding: 20px;
@@ -53,190 +52,193 @@ HTML_TEMPLATE = """
             align-items: center;
         }
 
-        .container { width: 100%; max-width: 450px; }
+        .container { width: 100%; max-width: 480px; }
 
         /* Header */
-        .header { text-align: center; margin-bottom: 30px; padding-top: 15px; }
-        .header h1 { 
-            font-size: 28px; 
-            font-weight: 700; 
-            background: linear-gradient(to right, #a78bfa, #22d3ee);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 5px;
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; }
+        .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; }
+        .logo-icon { 
+            width: 32px; height: 32px; border-radius: 8px; 
+            background: linear-gradient(135deg, var(--primary), var(--cyan));
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 15px var(--primary-glow);
         }
-        .header p { font-size: 13px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.5px; }
+        .status-badge { font-size: 11px; background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 4px 8px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.2); font-weight: 600; }
 
-        /* Cards */
-        .card {
-            background: var(--card-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        /* File Upload */
-        .upload-area {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 30px 20px;
-            border: 1.5px dashed rgba(124, 58, 237, 0.4);
-            border-radius: 16px;
-            background: rgba(124, 58, 237, 0.02);
-            transition: all 0.3s; cursor: pointer; position: relative;
-            margin-bottom: 15px;
-        }
-        .upload-area:hover { background: rgba(124, 58, 237, 0.08); border-color: var(--primary); }
-        .upload-area input[type="file"] { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        /* Upload Card */
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
-        .upload-icon { font-size: 32px; margin-bottom: 12px; color: var(--primary); }
-        .upload-text { font-size: 14px; font-weight: 600; color: var(--text-main); }
-        .file-name { font-size: 12px; color: var(--text-muted); margin-top: 4px; word-break: break-all; }
+        .upload-area {
+            border: 1.5px dashed var(--border); border-radius: 12px; padding: 30px 20px;
+            text-align: center; cursor: pointer; transition: all 0.2s; position: relative; margin-bottom: 15px;
+        }
+        .upload-area:hover { border-color: var(--primary); background: rgba(99, 102, 241, 0.05); }
+        .upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .upload-icon { font-size: 28px; margin-bottom: 10px; }
+        .upload-title { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+        .upload-desc { font-size: 12px; color: var(--text-muted); }
 
         /* Buttons */
         .btn {
-            width: 100%; padding: 15px; border: none; border-radius: 14px;
-            font-size: 15px; font-weight: 700; cursor: pointer; transition: 0.2s;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; padding: 14px; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit;
         }
-        .btn:active { transform: scale(0.97); }
+        .btn:active { transform: scale(0.96); }
+        .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 4px 15px var(--primary-glow); }
+        .btn-primary:hover { background: #4f46e5; }
         
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary), #4F46E5);
-            color: #fff;
-            box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
-        }
-        .btn-primary:hover { background: linear-gradient(135deg, var(--primary-hover), #4338CA); }
-
         /* Bot List */
+        .section-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; margin-left: 5px; }
         .bot-list { display: flex; flex-direction: column; gap: 12px; }
-        .bot-card { padding: 18px; display: flex; flex-direction: column; gap: 15px; }
         
-        .bot-header { display: flex; align-items: center; gap: 12px; }
-        .led { width: 10px; height: 10px; border-radius: 50%; background: var(--offline); transition: 0.3s; }
-        .led.active { 
-            background: var(--success); 
-            box-shadow: 0 0 12px var(--success);
-            animation: glow 2s infinite alternate;
-        }
-        @keyframes glow { from { box-shadow: 0 0 5px var(--success); } to { box-shadow: 0 0 15px var(--success); } }
-
-        .bot-name { font-size: 15px; font-weight: 600; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bot-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .bot-header { display: flex; align-items: center; gap: 10px; }
         
-        .actions { display: flex; gap: 8px; }
+        .led { width: 8px; height: 8px; border-radius: 50%; background: #52525b; }
+        .led.active { background: var(--success); box-shadow: 0 0 10px var(--success); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        .bot-name { font-weight: 600; font-size: 14px; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .actions { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
         .btn-icon {
-            padding: 10px; border-radius: 10px; border: 1px solid transparent;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: 0.2s; background: transparent; font-size: 16px;
+            padding: 10px; border-radius: 8px; background: var(--surface-hover); border: 1px solid transparent;
+            color: var(--text-main); cursor: pointer; transition: 0.2s; font-size: 14px;
+            display: flex; justify-content: center; align-items: center;
         }
-        .btn-icon.start { background: rgba(16, 185, 129, 0.1); color: var(--success); border-color: rgba(16, 185, 129, 0.2); }
+        .btn-icon:hover { background: var(--border); }
+        .btn-icon.start { color: var(--success); background: rgba(16, 185, 129, 0.1); }
         .btn-icon.start:hover { background: var(--success); color: #000; }
-        .btn-icon.kill { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.2); }
+        .btn-icon.kill { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
         .btn-icon.kill:hover { background: var(--danger); color: #fff; }
-        .btn-icon.logs { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
-        .btn-icon.logs:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
-        .btn-icon.del { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
-        .btn-icon.del:hover { background: rgba(239, 68, 68, 0.8); color: #fff; }
+        .btn-icon.log { color: var(--cyan); background: rgba(6, 182, 212, 0.1); }
+        .btn-icon.log:hover { background: var(--cyan); color: #000; }
 
-        /* Log Modal */
-        #logModal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000;
-            justify-content: center; align-items: center; padding: 20px;
+        /* Console Modal */
+        #consoleModal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px); z-index: 1000; justify-content: center; align-items: center; padding: 15px;
         }
-        .modal-content {
-            background: #0f0f13; border: 1px solid var(--border);
-            width: 100%; max-width: 500px; border-radius: 16px;
-            display: flex; flex-direction: column; max-height: 80vh;
+        .console-box {
+            background: #000; border: 1px solid var(--border); border-radius: 12px;
+            width: 100%; max-width: 600px; height: 70vh; display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
         }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border); }
-        .modal-header h3 { font-size: 16px; color: var(--text-main); }
-        .close-btn { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
-        .log-body { padding: 15px 20px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; color: #a78bfa; white-space: pre-wrap; }
+        .console-header { padding: 12px 15px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .console-title { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+        .console-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+        .console-body { 
+            padding: 15px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; 
+            font-size: 12px; color: #e4e4e7; line-height: 1.5; white-space: pre-wrap; flex-grow: 1;
+        }
+
+        /* Toast Notifications */
+        #toastContainer { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { 
+            background: var(--surface); border: 1px solid var(--border); padding: 12px 20px; 
+            border-radius: 8px; font-size: 13px; font-weight: 500; color: #fff;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5); animation: slideDown 0.3s ease;
+            display: flex; align-items: center; gap: 8px;
+        }
+        @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--danger); }
 
         /* Loader */
-        #loader { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:999; justify-content:center; align-items:center;}
-        .spinner { width: 35px; height: 35px; border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        #loader { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; justify-content: center; align-items: center; }
+        .spinner { width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
+    <div id="toastContainer"></div>
     <div id="loader"><div class="spinner"></div></div>
 
-    <!-- Logs Modal -->
-    <div id="logModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="logTitle">Bot Logs</h3>
-                <button class="close-btn" onclick="closeModal()">✕</button>
+    <!-- Console Modal -->
+    <div id="consoleModal" onclick="if(event.target === this) closeConsole()">
+        <div class="console-box">
+            <div class="console-header">
+                <span class="console-title" id="consoleTitle">Terminal</span>
+                <button class="console-close" onclick="closeConsole()">✕</button>
             </div>
-            <div class="log-body" id="logContent">Loading logs...</div>
+            <div class="console-body" id="consoleBody">Connecting to server...</div>
         </div>
     </div>
 
     <div class="container">
         <div class="header">
-            <h1>BotDeploy Pro</h1>
-            <p>Premium Server Controller</p>
+            <div class="logo">
+                <div class="logo-icon">⚡</div>
+                NEXUS HOST
+            </div>
+            <div class="status-badge">● ONLINE</div>
         </div>
 
         <div class="card">
             <form id="uploadForm">
-                <label class="upload-area">
+                <label class="upload-area" id="dropZone">
                     <input type="file" id="fileInput" name="file" accept=".py" required>
-                    <span class="upload-icon">📁</span>
-                    <span class="upload-text">Tap to choose file</span>
-                    <span class="file-name" id="fileName">Only .py files allowed</span>
+                    <div class="upload-icon">📦</div>
+                    <div class="upload-title" id="fileLabel">Upload Bot Script</div>
+                    <div class="upload-desc" id="fileDesc">Select a .py file to deploy</div>
                 </label>
                 <button type="submit" class="btn btn-primary">
-                    <span>🚀</span> Deploy Script
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
+                    Deploy to Server
                 </button>
             </form>
         </div>
 
+        <div class="section-title">Active Instances</div>
         <div class="bot-list" id="botList">
             <!-- Bots load here -->
         </div>
     </div>
 
     <script>
-        // File Selection
+        // File Upload UI
         document.getElementById('fileInput').addEventListener('change', function(e) {
-            const fileName = document.getElementById('fileName');
             if(e.target.files.length > 0) {
-                fileName.innerText = e.target.files[0].name;
-                fileName.style.color = '#a78bfa';
-            } else {
-                fileName.innerText = 'Only .py files allowed';
-                fileName.style.color = '#9CA3AF';
+                document.getElementById('fileLabel').innerText = e.target.files[0].name;
+                document.getElementById('fileLabel').style.color = '#6366f1';
+                document.getElementById('fileDesc').innerText = 'Ready to deploy';
             }
         });
+
+        // Custom Toast Notification
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${type === 'success' ? '✅' : '⚠️'}</span> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+        }
 
         // Upload
         document.getElementById('uploadForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             document.getElementById('loader').style.display = 'flex';
-            
             const formData = new FormData(this);
+            
             try {
                 const res = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await res.json();
-                alert(data.message); 
+                showToast(data.message, data.message.includes('Success') ? 'success' : 'error');
                 this.reset();
-                document.getElementById('fileName').innerText = 'Only .py files allowed';
-                document.getElementById('fileName').style.color = '#9CA3AF';
+                document.getElementById('fileLabel').innerText = 'Upload Bot Script';
+                document.getElementById('fileLabel').style.color = '#f4f4f5';
+                document.getElementById('fileDesc').innerText = 'Select a .py file to deploy';
                 loadBots();
             } catch (error) {
-                alert("Upload failed!");
+                showToast("Network Error!", "error");
             } finally {
                 document.getElementById('loader').style.display = 'none';
             }
         });
 
-        // Render Bot List
+        // Load Bots
         async function loadBots() {
             try {
                 const res = await fetch('/status');
@@ -244,7 +246,7 @@ HTML_TEMPLATE = """
                 const list = document.getElementById('botList');
                 
                 if (Object.keys(bots).length === 0) {
-                    list.innerHTML = '';
+                    list.innerHTML = '<div style="text-align:center; color:#52525b; font-size:13px; padding:20px;">No bots deployed yet.</div>';
                     return;
                 }
 
@@ -252,7 +254,6 @@ HTML_TEMPLATE = """
                 for (const [name, isRunning] of Object.entries(bots)) {
                     const card = document.createElement('div');
                     card.className = `card bot-card`;
-                    
                     card.innerHTML = `
                         <div class="bot-header">
                             <div class="led ${isRunning ? 'active' : ''}"></div>
@@ -261,7 +262,7 @@ HTML_TEMPLATE = """
                         <div class="actions">
                             <button class="btn-icon start" onclick="controlBot('${name}', 'start')" title="Start">▶</button>
                             <button class="btn-icon kill" onclick="controlBot('${name}', 'kill')" title="Kill">■</button>
-                            <button class="btn-icon logs" onclick="viewLogs('${name}')" title="Console Logs">📄</button>
+                            <button class="btn-icon log" onclick="viewLog('${name}')" title="Terminal">📟</button>
                             <button class="btn-icon del" onclick="controlBot('${name}', 'delete')" title="Delete">🗑</button>
                         </div>
                     `;
@@ -270,10 +271,11 @@ HTML_TEMPLATE = """
             } catch (e) {}
         }
 
-        // Control Bot
+        // Control Bot (Start, Kill, Delete)
         async function controlBot(filename, action) {
             if (action === 'delete' && !confirm(`Delete ${filename}?`)) return;
             document.getElementById('loader').style.display = 'flex';
+            
             try {
                 const res = await fetch('/control', {
                     method: 'POST',
@@ -282,30 +284,43 @@ HTML_TEMPLATE = """
                 });
                 const data = await res.json();
                 
-                // Show error in alert if bot crashes
-                if(action === 'start' && data.error) {
-                    alert("Bot crashed! Check Logs for details.");
-                    viewLogs(filename); // Auto open logs
+                if (data.error) {
+                    showToast(data.message, 'error');
+                    viewLog(filename); // Auto open terminal on crash
+                } else {
+                    showToast(data.message, 'success');
                 }
                 loadBots();
-            } catch (error) {} finally {
+            } catch (error) {
+                showToast("Action failed!", 'error');
+            } finally {
                 document.getElementById('loader').style.display = 'none';
             }
         }
 
-        // View Logs
-        async function viewLogs(filename) {
-            document.getElementById('logTitle').innerText = `Console: ${filename}`;
-            document.getElementById('logContent').innerText = "Loading...";
-            document.getElementById('logModal').style.display = 'flex';
-
-            const res = await fetch(`/logs/${filename}`);
-            const data = await res.json();
-            document.getElementById('logContent').innerText = data.logs || "No output generated yet.";
+        // View Live Terminal
+        let logInterval;
+        async function viewLog(filename) {
+            document.getElementById('consoleTitle').innerText = `Terminal - ${filename}`;
+            document.getElementById('consoleModal').style.display = 'flex';
+            document.getElementById('consoleBody').innerText = "Fetching logs...\n";
+            
+            const fetchLog = async () => {
+                const res = await fetch(`/logs/${filename}`);
+                const data = await res.json();
+                const box = document.getElementById('consoleBody');
+                box.innerText = data.logs || "Waiting for output...";
+                box.scrollTop = box.scrollHeight; // Auto scroll to bottom
+            };
+            
+            await fetchLog();
+            clearInterval(logInterval);
+            logInterval = setInterval(fetchLog, 1500); // Update logs every 1.5s
         }
 
-        function closeModal() {
-            document.getElementById('logModal').style.display = 'none';
+        function closeConsole() {
+            document.getElementById('consoleModal').style.display = 'none';
+            clearInterval(logInterval);
         }
 
         setInterval(loadBots, 3000);
@@ -345,13 +360,12 @@ def get_status():
 
 @app.route('/logs/<filename>', methods=['GET'])
 def get_logs(filename):
-    # Read logs from file
     log_file = os.path.join(UPLOAD_FOLDER, f"{filename}.log")
     if os.path.exists(log_file):
         with open(log_file, 'r') as f:
             logs = f.read()
         return jsonify({"logs": logs})
-    return jsonify({"logs": "Log file not found. Start the bot first."})
+    return jsonify({"logs": ""})
 
 @app.route('/control', methods=['POST'])
 def control_bot():
@@ -369,26 +383,27 @@ def control_bot():
             return jsonify({"message": "Bot is already running!"})
         
         try:
-            # Save stdout and stderr to a log file
+            # টোকেন বা এনভায়রনমেন্ট ভেরিয়েবল পাস করা
+            env = os.environ.copy()
+            
             log_file = open(log_filepath, "w")
             proc = subprocess.Popen(
                 [sys.executable, "-u", filepath], 
                 cwd=UPLOAD_FOLDER,
                 stdout=log_file,
                 stderr=subprocess.STDOUT,
-                text=True
+                text=True,
+                env=env
             )
             bot_processes[filename] = proc
             
-            # Give it a second to crash if modules are missing
+            # বট ক্র্যাশ করলে ডিটেক্ট করা
             import time
-            time.sleep(1.5) 
-            
+            time.sleep(2) 
             if proc.poll() is not None:
-                # Process died immediately
-                return jsonify({"message": "Bot crashed on startup!", "error": True})
+                return jsonify({"message": "Bot crashed! Check Terminal.", "error": True})
                 
-            return jsonify({"message": f"{filename} started!"})
+            return jsonify({"message": f"{filename} started successfully!"})
         except Exception as e:
             return jsonify({"message": f"Error: {str(e)}", "error": True})
 
@@ -400,7 +415,7 @@ def control_bot():
             except:
                 bot_processes[filename].kill()
             del bot_processes[filename]
-            return jsonify({"message": f"{filename} killed!"})
+            return jsonify({"message": f"{filename} stopped!"})
         return jsonify({"message": "Bot is not running!"})
 
     elif action == 'delete':
