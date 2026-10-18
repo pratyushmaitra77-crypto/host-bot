@@ -1,5 +1,12 @@
-flask
+Flask
 waitress
-psutil
-pymongo
-werkzeug
+python-telegram-bot
+pyTelegramBotAPI
+telethon
+requests
+python-dotenv
+pyrogram
+aiogram
+aiohttp
+yt-dlp
+beautifulsoup4
