@@ -1,147 +1,316 @@
 import os
 import sys
 import subprocess
-import threading
 from flask import Flask, render_template_string, request, jsonify
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'bots'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# চলমান বটগুলোর প্রসেস ট্র্যাক করার ডিকশনারি
 bot_processes = {}
 
 # ==========================================
-# HTML, CSS, JS (Web Panel UI)
+# Premium PWA HTML, CSS, JS
 # ==========================================
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡ Bot Deploy Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Bot Controller</title>
+    <!-- Google Fonts for Premium Look -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #0a0a0a; color: #e0e0e0; font-family: 'Consolas', monospace; margin: 0; padding: 20px; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { color: #00ff88; margin: 0; }
-        .header p { color: #666; font-size: 14px; }
-        
-        .upload-box { background: #151515; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #222; }
-        input[type="file"] { display: none; }
-        .btn { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-family: inherit; font-weight: bold; transition: 0.2s; }
-        .btn-upload { background: #333; color: #fff; }
-        .btn-upload:hover { background: #555; }
-        .btn-deploy { background: #00ff88; color: #000; margin-left: 10px; }
-        .btn-deploy:hover { background: #00cc66; }
-        
-        .bot-list { display: flex; flex-direction: column; gap: 10px; }
-        .bot-card { background: #151515; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #222; }
-        
-        .bot-info { display: flex; align-items: center; gap: 15px; }
-        /* LED (Click to toggle on/off visually) */
-        .led { width: 20px; height: 20px; border-radius: 50%; background: #1a3a1a; border: 1px solid #333; cursor: pointer; transition: 0.3s; }
-        .led.running { background: #00ff88; box-shadow: 0 0 10px #00ff88; border-color: #00ff88; }
-        
-        .bot-name { font-weight: bold; font-size: 16px; }
-        .bot-status { font-size: 12px; color: #555; margin-top: 3px; }
-        
-        .actions { display: flex; gap: 10px; }
-        .btn-start { background: #0d3d0d; color: #00ff88; }
-        .btn-start:hover { background: #00ff88; color: #000; }
-        .btn-kill { background: #3d0d0d; color: #ff5555; }
-        .btn-kill:hover { background: #ff5555; color: #000; }
-        .btn-del { background: #2a2a2a; color: #ccc; }
-        .btn-del:hover { background: #ff3333; color: #fff; }
-        
-        @media (max-width: 600px) {
-            .bot-card { flex-direction: column; align-items: flex-start; gap: 15px; }
-            .actions { width: 100%; justify-content: space-between; }
-            .btn { flex: 1; }
+        :root {
+            --bg: #09090b;
+            --card-bg: rgba(25, 25, 30, 0.6);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --neon-green: #00ff88;
+            --neon-glow: rgba(0, 255, 136, 0.4);
+            --danger: #ff4444;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at 50% 0%, #1a1a24 0%, #09090b 70%);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container { width: 100%; max-width: 500px; }
+
+        /* Header */
+        .header { text-align: center; margin-bottom: 30px; padding-top: 10px; }
+        .header h1 { 
+            font-size: 26px; 
+            font-weight: 700; 
+            letter-spacing: 1px;
+            background: linear-gradient(90deg, #00ff88, #00b8ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        .header p { font-size: 13px; color: var(--text-muted); font-weight: 300; }
+
+        /* Upload Card */
+        .upload-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .file-drop-area {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 25px;
+            border: 2px dashed rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            background: rgba(0, 255, 136, 0.03);
+            transition: 0.3s;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .file-drop-area:hover { background: rgba(0, 255, 136, 0.08); border-color: var(--neon-green); }
+        .file-drop-area input[type="file"] { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        
+        .icon { font-size: 30px; margin-bottom: 10px; }
+        .file-label { font-size: 14px; font-weight: 600; color: var(--neon-green); }
+        .file-name { font-size: 12px; color: var(--text-muted); margin-top: 5px; word-break: break-all; }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn:active { transform: scale(0.97); }
+        
+        .btn-deploy {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 4px 15px var(--neon-glow);
+        }
+        .btn-deploy:hover { background: #00cc6a; }
+
+        /* Bot Cards */
+        .bot-list { display: flex; flex-direction: column; gap: 15px; }
+        
+        .bot-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .bot-card.running { border-color: rgba(0, 255, 136, 0.3); box-shadow: 0 0 20px rgba(0, 255, 136, 0.05); }
+
+        .bot-header { display: flex; align-items: center; gap: 12px; }
+        
+        /* Pulsing LED */
+        .led { width: 12px; height: 12px; border-radius: 50%; background: #333; border: 1px solid #555; }
+        .led.active { 
+            background: var(--neon-green); 
+            border-color: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 var(--neon-glow); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+        }
+
+        .bot-name { font-size: 16px; font-weight: 600; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .status-text { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--text-muted); }
+        .status-text.active { color: var(--neon-green); }
+
+        .actions { display: flex; gap: 8px; }
+        
+        .btn-act { flex: 1; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 600; border: 1px solid transparent; }
+        .btn-start { background: rgba(0, 255, 136, 0.1); color: var(--neon-green); border-color: rgba(0, 255, 136, 0.2); }
+        .btn-start:hover { background: var(--neon-green); color: #000; }
+        .btn-kill { background: rgba(255, 68, 68, 0.1); color: var(--danger); border-color: rgba(255, 68, 68, 0.2); }
+        .btn-kill:hover { background: var(--danger); color: #fff; }
+        .btn-del { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
+        .btn-del:hover { background: rgba(255, 68, 68, 0.8); color: #fff; }
+
+        /* Empty State */
+        .empty-state { text-align: center; color: var(--text-muted); font-size: 14px; padding: 40px 0; font-style: italic; }
+        
+        /* Loader */
+        #loader { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); backdrop-filter:blur(3px); z-index:999; justify-content:center; align-items:center;}
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid var(--neon-green); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>⚡ BOT DEPLOY PANEL</h1>
-        <p>Web Based Controller (Termux & Render Supported)</p>
-    </div>
+    <div id="loader"><div class="spinner"></div></div>
 
-    <div class="upload-box">
-        <form id="uploadForm">
-            <label for="fileInput" class="btn btn-upload">📁 Choose .py File</label>
-            <input type="file" id="fileInput" name="file" accept=".py" required>
-            <span id="fileName" style="margin-left: 10px; font-size: 14px; color: #888;">No file chosen</span>
-            <button type="submit" class="btn btn-deploy">🚀 DEPLOY</button>
-        </form>
-    </div>
+    <div class="container">
+        <div class="header">
+            <h1>BOT DEPLOYER</h1>
+            <p>Premium Cloud Controller</p>
+        </div>
 
-    <div class="bot-list" id="botList">
-        <!-- Bots will be loaded here -->
+        <div class="upload-card">
+            <form id="uploadForm">
+                <label class="file-drop-area">
+                    <input type="file" id="fileInput" name="file" accept=".py" required>
+                    <span class="icon">📁</span>
+                    <span class="file-label">Tap to Choose .py File</span>
+                    <span class="file-name" id="fileName">No file selected</span>
+                </label>
+                <button type="submit" class="btn btn-deploy">
+                    <span>🚀</span> Deploy Bot
+                </button>
+            </form>
+        </div>
+
+        <div class="bot-list" id="botList">
+            <!-- Bots will appear here -->
+            <div class="empty-state">No bots deployed yet.</div>
+        </div>
     </div>
 
     <script>
-        // ফাইল সিলেক্ট করলে নাম দেখাবে
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            document.getElementById('fileName').innerText = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const loader = document.getElementById('loader');
+
+        // File Select Logic
+        fileInput.addEventListener('change', function(e) {
+            if(e.target.files.length > 0) {
+                fileName.innerText = e.target.files[0].name;
+                fileName.style.color = '#00ff88';
+            } else {
+                fileName.innerText = 'No file selected';
+                fileName.style.color = '#a1a1aa';
+            }
         });
 
-        // ফাইল আপলোড (Deploy)
+        // Upload Function
         document.getElementById('uploadForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            loader.style.display = 'flex';
+            
             const formData = new FormData(this);
-            const res = await fetch('/upload', { method: 'POST', body: formData });
-            const data = await res.json();
-            alert(data.message);
-            loadBots();
-            this.reset();
-            document.getElementById('fileName').innerText = 'No file chosen';
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                // Custom Toast (Alert replacement)
+                alert(data.message); 
+                
+                this.reset();
+                fileName.innerText = 'No file selected';
+                fileName.style.color = '#a1a1aa';
+                loadBots();
+            } catch (error) {
+                alert("Upload failed!");
+            } finally {
+                loader.style.display = 'none';
+            }
         });
 
-        // বট লিস্ট লোড করা এবং স্ট্যাটাস আপডেট করা
+        // Fetch and Render Bots
         async function loadBots() {
-            const res = await fetch('/status');
-            const bots = await res.json();
-            const list = document.getElementById('botList');
-            list.innerHTML = '';
+            try {
+                const res = await fetch('/status');
+                const bots = await res.json();
+                const list = document.getElementById('botList');
+                
+                if (Object.keys(bots).length === 0) {
+                    list.innerHTML = '<div class="empty-state">No bots deployed yet.</div>';
+                    return;
+                }
 
-            for (const [name, isRunning] of Object.entries(bots)) {
-                const card = document.createElement('div');
-                card.className = 'bot-card';
-                card.innerHTML = `
-                    <div class="bot-info">
-                        <div class="led ${isRunning ? 'running' : ''}"></div>
-                        <div>
-                            <div class="bot-name">${name}</div>
-                            <div class="bot-status">${isRunning ? '● RUNNING' : '● STOPPED'}</div>
+                list.innerHTML = '';
+                for (const [name, isRunning] of Object.entries(bots)) {
+                    const card = document.createElement('div');
+                    card.className = `bot-card ${isRunning ? 'running' : ''}`;
+                    
+                    card.innerHTML = `
+                        <div class="bot-header">
+                            <div class="led ${isRunning ? 'active' : ''}"></div>
+                            <div class="bot-name" title="${name}">${name}</div>
                         </div>
-                    </div>
-                    <div class="actions">
-                        <button class="btn btn-start" onclick="controlBot('${name}', 'start')">▶ START</button>
-                        <button class="btn btn-kill" onclick="controlBot('${name}', 'kill')">■ KILL</button>
-                        <button class="btn btn-del" onclick="controlBot('${name}', 'delete')">🗑 DELETE</button>
-                    </div>
-                `;
-                list.appendChild(card);
+                        <div class="status-text ${isRunning ? 'active' : ''}">
+                            ${isRunning ? 'SYSTEM ONLINE' : 'SYSTEM OFFLINE'}
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-act btn-start" onclick="controlBot('${name}', 'start')">▶ Start</button>
+                            <button class="btn btn-act btn-kill" onclick="controlBot('${name}', 'kill')">■ Kill</button>
+                            <button class="btn btn-act btn-del" onclick="controlBot('${name}', 'delete')">🗑</button>
+                        </div>
+                    `;
+                    list.appendChild(card);
+                }
+            } catch (e) {
+                console.log("Error loading bots:", e);
             }
         }
 
-        // বট কন্ট্রোল (Start, Kill, Delete)
+        // Control Actions (Start, Kill, Delete)
         async function controlBot(filename, action) {
-            if (action === 'delete' && !confirm(`Are you sure you want to delete ${filename}?`)) return;
+            if (action === 'delete' && !confirm(`Delete ${filename} permanently?`)) return;
             
-            const res = await fetch('/control', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filename: filename, action: action })
-            });
-            const data = await res.json();
-            if (data.message) alert(data.message);
-            loadBots();
+            loader.style.display = 'flex';
+            try {
+                const res = await fetch('/control', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: filename, action: action })
+                });
+                const data = await res.json();
+                if (data.message && action !== 'start' && action !== 'kill') alert(data.message);
+                loadBots();
+            } catch (error) {
+                alert("Action failed!");
+            } finally {
+                loader.style.display = 'none';
+            }
         }
 
-        // প্রতি ২ সেকেন্ডে স্ট্যাটাস চেক করবে
-        setInterval(loadBots, 2000);
+        // Refresh every 3 seconds
+        setInterval(loadBots, 3000);
         loadBots();
     </script>
 </body>
@@ -169,11 +338,9 @@ def upload_file():
 
 @app.route('/status', methods=['GET'])
 def get_status():
-    # bots ফোল্ডারের সব ফাইল বের করা
     files = [f for f in os.listdir(UPLOAD_FOLDER) if f.endswith('.py')]
     status = {}
     for f in files:
-        # প্রসেস চলছে কিনা চেক করা
         is_running = f in bot_processes and bot_processes[f].poll() is None
         status[f] = is_running
     return jsonify(status)
@@ -188,19 +355,16 @@ def control_bot():
     if not os.path.exists(filepath):
         return jsonify({"message": "File not found!"})
 
-    # START ACTION
     if action == 'start':
         if filename in bot_processes and bot_processes[filename].poll() is None:
             return jsonify({"message": "Bot is already running!"})
         try:
-            # পাইথন ফাইলটি রান করা
             proc = subprocess.Popen([sys.executable, "-u", filepath], cwd=UPLOAD_FOLDER)
             bot_processes[filename] = proc
-            return jsonify({"message": f"{filename} started successfully!"})
+            return jsonify({"message": f"{filename} started!"})
         except Exception as e:
-            return jsonify({"message": f"Error starting bot: {str(e)}"})
+            return jsonify({"message": f"Error: {str(e)}"})
 
-    # KILL ACTION
     elif action == 'kill':
         if filename in bot_processes and bot_processes[filename].poll() is None:
             bot_processes[filename].terminate()
@@ -212,7 +376,6 @@ def control_bot():
             return jsonify({"message": f"{filename} killed!"})
         return jsonify({"message": "Bot is not running!"})
 
-    # DELETE ACTION
     elif action == 'delete':
         if filename in bot_processes and bot_processes[filename].poll() is None:
             bot_processes[filename].kill()
@@ -221,7 +384,7 @@ def control_bot():
             os.remove(filepath)
             return jsonify({"message": f"{filename} deleted!"})
         except Exception as e:
-            return jsonify({"message": f"Error deleting file: {str(e)}"})
+            return jsonify({"message": f"Error deleting file!"})
 
     return jsonify({"message": "Invalid action!"})
 
@@ -229,8 +392,6 @@ def control_bot():
 # Main Server
 # ==========================================
 if __name__ == '__main__':
-    # Render-এর জন্য PORT ভেরিয়েবল, Termux-এর জন্য 5000
     port = int(os.environ.get('PORT', 5000))
-    print(f"\n🚀 WEB PANEL STARTED!")
-    print(f"👉 Open browser and go to: http://127.0.0.1:{port} or http://<your-ip>:{port}\n")
+    print(f"\n🚀 PREMIUM PANEL STARTED ON PORT {port}")
     app.run(host='0.0.0.0', port=port, debug=False)
