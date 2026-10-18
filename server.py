@@ -8,9 +8,10 @@ UPLOAD_FOLDER = 'bots'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 bot_processes = {}
+bot_logs = {} # বটের আউটপুট সেভ করার জন্য
 
 # ==========================================
-# Premium PWA HTML, CSS, JS
+# Premium Indigo/Dark Theme HTML, CSS, JS
 # ==========================================
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -18,31 +19,33 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#09090b">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Bot Controller</title>
-    <!-- Google Fonts for Premium Look -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#050505">
+    <title>BotDeploy | Premium</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #09090b;
-            --card-bg: rgba(25, 25, 30, 0.6);
-            --border: rgba(255, 255, 255, 0.08);
-            --text-main: #f4f4f5;
-            --text-muted: #a1a1aa;
-            --neon-green: #00ff88;
-            --neon-glow: rgba(0, 255, 136, 0.4);
-            --danger: #ff4444;
+            --bg: #050505;
+            --card-bg: rgba(20, 20, 25, 0.8);
+            --border: rgba(255, 255, 255, 0.06);
+            --text-main: #F3F4F6;
+            --text-muted: #9CA3AF;
+            
+            /* Premium Purple/Indigo Colors */
+            --primary: #7C3AED; 
+            --primary-hover: #6D28D9;
+            --accent: #06B6D4; 
+            
+            --danger: #EF4444;
+            --success: #10B981;
+            --offline: #374151;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         body {
             background-color: var(--bg);
-            background-image: radial-gradient(circle at 50% 0%, #1a1a24 0%, #09090b 70%);
+            background-image: radial-gradient(circle at 50% -10%, rgba(124, 58, 237, 0.15) 0%, #050505 60%);
             color: var(--text-main);
-            font-family: 'Outfit', sans-serif;
             min-height: 100vh;
             padding: 20px;
             display: flex;
@@ -50,207 +53,190 @@ HTML_TEMPLATE = """
             align-items: center;
         }
 
-        .container { width: 100%; max-width: 500px; }
+        .container { width: 100%; max-width: 450px; }
 
         /* Header */
-        .header { text-align: center; margin-bottom: 30px; padding-top: 10px; }
+        .header { text-align: center; margin-bottom: 30px; padding-top: 15px; }
         .header h1 { 
-            font-size: 26px; 
+            font-size: 28px; 
             font-weight: 700; 
-            letter-spacing: 1px;
-            background: linear-gradient(90deg, #00ff88, #00b8ff);
+            background: linear-gradient(to right, #a78bfa, #22d3ee);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 5px;
         }
-        .header p { font-size: 13px; color: var(--text-muted); font-weight: 300; }
+        .header p { font-size: 13px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.5px; }
 
-        /* Upload Card */
-        .upload-card {
+        /* Cards */
+        .card {
             background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 20px;
             padding: 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
-        .file-drop-area {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 25px;
-            border: 2px dashed rgba(0, 255, 136, 0.3);
-            border-radius: 12px;
-            background: rgba(0, 255, 136, 0.03);
-            transition: 0.3s;
-            cursor: pointer;
+        /* File Upload */
+        .upload-area {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 30px 20px;
+            border: 1.5px dashed rgba(124, 58, 237, 0.4);
+            border-radius: 16px;
+            background: rgba(124, 58, 237, 0.02);
+            transition: all 0.3s; cursor: pointer; position: relative;
             margin-bottom: 15px;
         }
-        .file-drop-area:hover { background: rgba(0, 255, 136, 0.08); border-color: var(--neon-green); }
-        .file-drop-area input[type="file"] { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .upload-area:hover { background: rgba(124, 58, 237, 0.08); border-color: var(--primary); }
+        .upload-area input[type="file"] { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
         
-        .icon { font-size: 30px; margin-bottom: 10px; }
-        .file-label { font-size: 14px; font-weight: 600; color: var(--neon-green); }
-        .file-name { font-size: 12px; color: var(--text-muted); margin-top: 5px; word-break: break-all; }
+        .upload-icon { font-size: 32px; margin-bottom: 12px; color: var(--primary); }
+        .upload-text { font-size: 14px; font-weight: 600; color: var(--text-main); }
+        .file-name { font-size: 12px; color: var(--text-muted); margin-top: 4px; word-break: break-all; }
 
         /* Buttons */
         .btn {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 12px;
-            font-family: inherit;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            width: 100%; padding: 15px; border: none; border-radius: 14px;
+            font-size: 15px; font-weight: 700; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         .btn:active { transform: scale(0.97); }
         
-        .btn-deploy {
-            background: var(--neon-green);
-            color: #000;
-            box-shadow: 0 4px 15px var(--neon-glow);
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #4F46E5);
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
         }
-        .btn-deploy:hover { background: #00cc6a; }
+        .btn-primary:hover { background: linear-gradient(135deg, var(--primary-hover), #4338CA); }
 
-        /* Bot Cards */
-        .bot-list { display: flex; flex-direction: column; gap: 15px; }
+        /* Bot List */
+        .bot-list { display: flex; flex-direction: column; gap: 12px; }
+        .bot-card { padding: 18px; display: flex; flex-direction: column; gap: 15px; }
         
-        .bot-card {
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            transition: 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .bot-card.running { border-color: rgba(0, 255, 136, 0.3); box-shadow: 0 0 20px rgba(0, 255, 136, 0.05); }
-
         .bot-header { display: flex; align-items: center; gap: 12px; }
-        
-        /* Pulsing LED */
-        .led { width: 12px; height: 12px; border-radius: 50%; background: #333; border: 1px solid #555; }
+        .led { width: 10px; height: 10px; border-radius: 50%; background: var(--offline); transition: 0.3s; }
         .led.active { 
-            background: var(--neon-green); 
-            border-color: var(--neon-green);
-            box-shadow: 0 0 10px var(--neon-green);
-            animation: pulse 2s infinite;
+            background: var(--success); 
+            box-shadow: 0 0 12px var(--success);
+            animation: glow 2s infinite alternate;
         }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 var(--neon-glow); }
-            70% { box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
-        }
+        @keyframes glow { from { box-shadow: 0 0 5px var(--success); } to { box-shadow: 0 0 15px var(--success); } }
 
-        .bot-name { font-size: 16px; font-weight: 600; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .status-text { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--text-muted); }
-        .status-text.active { color: var(--neon-green); }
-
+        .bot-name { font-size: 15px; font-weight: 600; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
         .actions { display: flex; gap: 8px; }
-        
-        .btn-act { flex: 1; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 600; border: 1px solid transparent; }
-        .btn-start { background: rgba(0, 255, 136, 0.1); color: var(--neon-green); border-color: rgba(0, 255, 136, 0.2); }
-        .btn-start:hover { background: var(--neon-green); color: #000; }
-        .btn-kill { background: rgba(255, 68, 68, 0.1); color: var(--danger); border-color: rgba(255, 68, 68, 0.2); }
-        .btn-kill:hover { background: var(--danger); color: #fff; }
-        .btn-del { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
-        .btn-del:hover { background: rgba(255, 68, 68, 0.8); color: #fff; }
+        .btn-icon {
+            padding: 10px; border-radius: 10px; border: 1px solid transparent;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s; background: transparent; font-size: 16px;
+        }
+        .btn-icon.start { background: rgba(16, 185, 129, 0.1); color: var(--success); border-color: rgba(16, 185, 129, 0.2); }
+        .btn-icon.start:hover { background: var(--success); color: #000; }
+        .btn-icon.kill { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.2); }
+        .btn-icon.kill:hover { background: var(--danger); color: #fff; }
+        .btn-icon.logs { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
+        .btn-icon.logs:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
+        .btn-icon.del { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
+        .btn-icon.del:hover { background: rgba(239, 68, 68, 0.8); color: #fff; }
 
-        /* Empty State */
-        .empty-state { text-align: center; color: var(--text-muted); font-size: 14px; padding: 40px 0; font-style: italic; }
-        
+        /* Log Modal */
+        #logModal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000;
+            justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-content {
+            background: #0f0f13; border: 1px solid var(--border);
+            width: 100%; max-width: 500px; border-radius: 16px;
+            display: flex; flex-direction: column; max-height: 80vh;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border); }
+        .modal-header h3 { font-size: 16px; color: var(--text-main); }
+        .close-btn { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+        .log-body { padding: 15px 20px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; color: #a78bfa; white-space: pre-wrap; }
+
         /* Loader */
-        #loader { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); backdrop-filter:blur(3px); z-index:999; justify-content:center; align-items:center;}
-        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid var(--neon-green); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #loader { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:999; justify-content:center; align-items:center;}
+        .spinner { width: 35px; height: 35px; border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div id="loader"><div class="spinner"></div></div>
 
+    <!-- Logs Modal -->
+    <div id="logModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="logTitle">Bot Logs</h3>
+                <button class="close-btn" onclick="closeModal()">✕</button>
+            </div>
+            <div class="log-body" id="logContent">Loading logs...</div>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
-            <h1>BOT DEPLOYER</h1>
-            <p>Premium Cloud Controller</p>
+            <h1>BotDeploy Pro</h1>
+            <p>Premium Server Controller</p>
         </div>
 
-        <div class="upload-card">
+        <div class="card">
             <form id="uploadForm">
-                <label class="file-drop-area">
+                <label class="upload-area">
                     <input type="file" id="fileInput" name="file" accept=".py" required>
-                    <span class="icon">📁</span>
-                    <span class="file-label">Tap to Choose .py File</span>
-                    <span class="file-name" id="fileName">No file selected</span>
+                    <span class="upload-icon">📁</span>
+                    <span class="upload-text">Tap to choose file</span>
+                    <span class="file-name" id="fileName">Only .py files allowed</span>
                 </label>
-                <button type="submit" class="btn btn-deploy">
-                    <span>🚀</span> Deploy Bot
+                <button type="submit" class="btn btn-primary">
+                    <span>🚀</span> Deploy Script
                 </button>
             </form>
         </div>
 
         <div class="bot-list" id="botList">
-            <!-- Bots will appear here -->
-            <div class="empty-state">No bots deployed yet.</div>
+            <!-- Bots load here -->
         </div>
     </div>
 
     <script>
-        const fileInput = document.getElementById('fileInput');
-        const fileName = document.getElementById('fileName');
-        const loader = document.getElementById('loader');
-
-        // File Select Logic
-        fileInput.addEventListener('change', function(e) {
+        // File Selection
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const fileName = document.getElementById('fileName');
             if(e.target.files.length > 0) {
                 fileName.innerText = e.target.files[0].name;
-                fileName.style.color = '#00ff88';
+                fileName.style.color = '#a78bfa';
             } else {
-                fileName.innerText = 'No file selected';
-                fileName.style.color = '#a1a1aa';
+                fileName.innerText = 'Only .py files allowed';
+                fileName.style.color = '#9CA3AF';
             }
         });
 
-        // Upload Function
+        // Upload
         document.getElementById('uploadForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            loader.style.display = 'flex';
+            document.getElementById('loader').style.display = 'flex';
             
             const formData = new FormData(this);
             try {
                 const res = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await res.json();
-                
-                // Custom Toast (Alert replacement)
                 alert(data.message); 
-                
                 this.reset();
-                fileName.innerText = 'No file selected';
-                fileName.style.color = '#a1a1aa';
+                document.getElementById('fileName').innerText = 'Only .py files allowed';
+                document.getElementById('fileName').style.color = '#9CA3AF';
                 loadBots();
             } catch (error) {
                 alert("Upload failed!");
             } finally {
-                loader.style.display = 'none';
+                document.getElementById('loader').style.display = 'none';
             }
         });
 
-        // Fetch and Render Bots
+        // Render Bot List
         async function loadBots() {
             try {
                 const res = await fetch('/status');
@@ -258,41 +244,36 @@ HTML_TEMPLATE = """
                 const list = document.getElementById('botList');
                 
                 if (Object.keys(bots).length === 0) {
-                    list.innerHTML = '<div class="empty-state">No bots deployed yet.</div>';
+                    list.innerHTML = '';
                     return;
                 }
 
                 list.innerHTML = '';
                 for (const [name, isRunning] of Object.entries(bots)) {
                     const card = document.createElement('div');
-                    card.className = `bot-card ${isRunning ? 'running' : ''}`;
+                    card.className = `card bot-card`;
                     
                     card.innerHTML = `
                         <div class="bot-header">
                             <div class="led ${isRunning ? 'active' : ''}"></div>
                             <div class="bot-name" title="${name}">${name}</div>
                         </div>
-                        <div class="status-text ${isRunning ? 'active' : ''}">
-                            ${isRunning ? 'SYSTEM ONLINE' : 'SYSTEM OFFLINE'}
-                        </div>
                         <div class="actions">
-                            <button class="btn btn-act btn-start" onclick="controlBot('${name}', 'start')">▶ Start</button>
-                            <button class="btn btn-act btn-kill" onclick="controlBot('${name}', 'kill')">■ Kill</button>
-                            <button class="btn btn-act btn-del" onclick="controlBot('${name}', 'delete')">🗑</button>
+                            <button class="btn-icon start" onclick="controlBot('${name}', 'start')" title="Start">▶</button>
+                            <button class="btn-icon kill" onclick="controlBot('${name}', 'kill')" title="Kill">■</button>
+                            <button class="btn-icon logs" onclick="viewLogs('${name}')" title="Console Logs">📄</button>
+                            <button class="btn-icon del" onclick="controlBot('${name}', 'delete')" title="Delete">🗑</button>
                         </div>
                     `;
                     list.appendChild(card);
                 }
-            } catch (e) {
-                console.log("Error loading bots:", e);
-            }
+            } catch (e) {}
         }
 
-        // Control Actions (Start, Kill, Delete)
+        // Control Bot
         async function controlBot(filename, action) {
-            if (action === 'delete' && !confirm(`Delete ${filename} permanently?`)) return;
-            
-            loader.style.display = 'flex';
+            if (action === 'delete' && !confirm(`Delete ${filename}?`)) return;
+            document.getElementById('loader').style.display = 'flex';
             try {
                 const res = await fetch('/control', {
                     method: 'POST',
@@ -300,16 +281,33 @@ HTML_TEMPLATE = """
                     body: JSON.stringify({ filename: filename, action: action })
                 });
                 const data = await res.json();
-                if (data.message && action !== 'start' && action !== 'kill') alert(data.message);
+                
+                // Show error in alert if bot crashes
+                if(action === 'start' && data.error) {
+                    alert("Bot crashed! Check Logs for details.");
+                    viewLogs(filename); // Auto open logs
+                }
                 loadBots();
-            } catch (error) {
-                alert("Action failed!");
-            } finally {
-                loader.style.display = 'none';
+            } catch (error) {} finally {
+                document.getElementById('loader').style.display = 'none';
             }
         }
 
-        // Refresh every 3 seconds
+        // View Logs
+        async function viewLogs(filename) {
+            document.getElementById('logTitle').innerText = `Console: ${filename}`;
+            document.getElementById('logContent').innerText = "Loading...";
+            document.getElementById('logModal').style.display = 'flex';
+
+            const res = await fetch(`/logs/${filename}`);
+            const data = await res.json();
+            document.getElementById('logContent').innerText = data.logs || "No output generated yet.";
+        }
+
+        function closeModal() {
+            document.getElementById('logModal').style.display = 'none';
+        }
+
         setInterval(loadBots, 3000);
         loadBots();
     </script>
@@ -345,12 +343,23 @@ def get_status():
         status[f] = is_running
     return jsonify(status)
 
+@app.route('/logs/<filename>', methods=['GET'])
+def get_logs(filename):
+    # Read logs from file
+    log_file = os.path.join(UPLOAD_FOLDER, f"{filename}.log")
+    if os.path.exists(log_file):
+        with open(log_file, 'r') as f:
+            logs = f.read()
+        return jsonify({"logs": logs})
+    return jsonify({"logs": "Log file not found. Start the bot first."})
+
 @app.route('/control', methods=['POST'])
 def control_bot():
     data = request.json
     filename = data.get('filename')
     action = data.get('action')
     filepath = os.path.join(UPLOAD_FOLDER, filename)
+    log_filepath = os.path.join(UPLOAD_FOLDER, f"{filename}.log")
 
     if not os.path.exists(filepath):
         return jsonify({"message": "File not found!"})
@@ -358,12 +367,30 @@ def control_bot():
     if action == 'start':
         if filename in bot_processes and bot_processes[filename].poll() is None:
             return jsonify({"message": "Bot is already running!"})
+        
         try:
-            proc = subprocess.Popen([sys.executable, "-u", filepath], cwd=UPLOAD_FOLDER)
+            # Save stdout and stderr to a log file
+            log_file = open(log_filepath, "w")
+            proc = subprocess.Popen(
+                [sys.executable, "-u", filepath], 
+                cwd=UPLOAD_FOLDER,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                text=True
+            )
             bot_processes[filename] = proc
+            
+            # Give it a second to crash if modules are missing
+            import time
+            time.sleep(1.5) 
+            
+            if proc.poll() is not None:
+                # Process died immediately
+                return jsonify({"message": "Bot crashed on startup!", "error": True})
+                
             return jsonify({"message": f"{filename} started!"})
         except Exception as e:
-            return jsonify({"message": f"Error: {str(e)}"})
+            return jsonify({"message": f"Error: {str(e)}", "error": True})
 
     elif action == 'kill':
         if filename in bot_processes and bot_processes[filename].poll() is None:
@@ -382,16 +409,14 @@ def control_bot():
             del bot_processes[filename]
         try:
             os.remove(filepath)
+            if os.path.exists(log_filepath):
+                os.remove(log_filepath)
             return jsonify({"message": f"{filename} deleted!"})
         except Exception as e:
             return jsonify({"message": f"Error deleting file!"})
 
     return jsonify({"message": "Invalid action!"})
 
-# ==========================================
-# Main Server
-# ==========================================
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    print(f"\n🚀 PREMIUM PANEL STARTED ON PORT {port}")
     app.run(host='0.0.0.0', port=port, debug=False)
